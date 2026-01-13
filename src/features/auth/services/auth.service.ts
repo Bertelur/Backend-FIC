@@ -1,6 +1,6 @@
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../../../utils/jwt';
 import { comparePassword, hashPassword } from '../../../utils/password';
-import { LoginRequest, RegisterRequest, AuthResponse, UserType } from '../interfaces/auth.types';
+import { LoginRequest, RegisterRequest, AuthResponse } from '../interfaces/auth.types';
 import * as dashboardUserRepo from '../repositories/dashboardUser.repository';
 import * as buyerRepo from '../repositories/buyer.repository';
 

@@ -27,7 +27,7 @@
     "typescript": "^5.9.3"
   },
   "scripts": {
-    "dev": "nodemon --exec ts-node index.ts",
+    "dev": "nodemon --exec ts-node src/server/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "type-check": "tsc --noEmit"

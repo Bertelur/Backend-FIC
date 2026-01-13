@@ -1,8 +1,8 @@
-import { Collection } from "mongodb";
-import { getDatabase } from "../../../config/database";
-import { DashboardUser } from "../interfaces/auth.types";
+import { Collection } from 'mongodb';
+import { getDatabase } from '../../../config/database';
+import { DashboardUser } from '../interfaces/auth.types';
 
-const COLLECTION_NAME = "dashboard_users";
+const COLLECTION_NAME = 'dashboard_users';
 
 export function getDashboardUserCollection(): Collection<DashboardUser> {
   const db = getDatabase();
