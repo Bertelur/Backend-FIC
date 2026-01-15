@@ -14,6 +14,8 @@ import { initializeDashboardUserIndexes } from './features/auth/repositories/das
 import { initializeBuyerIndexes } from './features/auth/repositories/buyer.repository.js';
 import { initializePaymentIndexes } from './features/payment/repositories/payment.repository.js';
 import { initializeProductIndexes } from './features/product/repositories/product.repository.js';
+import { initializeInvoiceIndexes } from './features/invoice/repositories/invoice.repository.js';
+import { initializeCartIndexes } from './features/cart/repositories/cart.repository.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -66,6 +68,8 @@ async function startServer() {
     await initializeBuyerIndexes();
     await initializePaymentIndexes();
     await initializeProductIndexes();
+    await initializeInvoiceIndexes();
+    await initializeCartIndexes();
 
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT} in ${process.env.NODE_ENV || 'development'} environment`);
