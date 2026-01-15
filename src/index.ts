@@ -10,6 +10,7 @@ import { connectDatabase, closeDatabase } from './config/database.js';
 import router from './routes/index.js';
 import { initializeDashboardUserIndexes } from './features/auth/repositories/dashboardUser.repository.js';
 import { initializeBuyerIndexes } from './features/auth/repositories/buyer.repository.js';
+import { initializePaymentIndexes } from './features/payment/repositories/payment.repository.js';
 
 dotenv.config();
 
@@ -55,6 +56,7 @@ async function startServer() {
 
     await initializeDashboardUserIndexes();
     await initializeBuyerIndexes();
+    await initializePaymentIndexes();
 
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT} in ${process.env.NODE_ENV || 'development'} environment`);

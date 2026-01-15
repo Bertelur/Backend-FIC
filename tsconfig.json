@@ -4,7 +4,7 @@
     "module": "NodeNext",
     "lib": ["ES2020"],
     "outDir": "./dist",
-    "rootDir": "./",
+    "rootDir": "./src",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -20,6 +20,11 @@
     "noFallthroughCasesInSwitch": true,
     "types": ["node"]
   },
-  "include": ["**/*.ts"],
+  "ts-node": {
+    "esm": true,
+    "experimentalResolver": true,
+    "preferTsExts": true
+  },
+  "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

@@ -16,6 +16,7 @@ export async function login(req: Request, res: Response): Promise<void> {
 
     if (!loginData.password || !loginData.type) {
       res.status(400).json({
+        success: false,
         error: 'Bad Request',
         message: 'Password and type are required',
       });
@@ -24,6 +25,7 @@ export async function login(req: Request, res: Response): Promise<void> {
 
     if (loginData.type === 'dashboard' && !loginData.username) {
       res.status(400).json({
+        success: false,
         error: 'Bad Request',
         message: 'Username is required for dashboard login',
       });
@@ -32,6 +34,7 @@ export async function login(req: Request, res: Response): Promise<void> {
 
     if (loginData.type === 'buyer' && !loginData.email && !loginData.username) {
       res.status(400).json({
+        success: false,
         error: 'Bad Request',
         message: 'Email or username is required for buyer login',
       });
@@ -44,10 +47,16 @@ export async function login(req: Request, res: Response): Promise<void> {
     res.cookie('refreshToken', result.tokens.refreshToken, COOKIE_OPTIONS);
 
     res.status(200).json({
-      user: result.user,
+      success: true,
+      message: 'Login successful',
+      data: {
+        user: result.user,
+        tokens: result.tokens,
+      },
     });
   } catch (error) {
     res.status(401).json({
+      success: false,
       error: 'Unauthorized',
       message: error instanceof Error ? error.message : 'Login failed',
     });
@@ -60,6 +69,7 @@ export async function register(req: Request, res: Response): Promise<void> {
 
     if (!registerData.email || !registerData.username || !registerData.password) {
       res.status(400).json({
+        success: false,
         error: 'Bad Request',
         message: 'Email, username, and password are required',
       });
@@ -72,10 +82,16 @@ export async function register(req: Request, res: Response): Promise<void> {
     res.cookie('refreshToken', result.tokens.refreshToken, COOKIE_OPTIONS);
 
     res.status(201).json({
-      user: result.user,
+      success: true,
+      message: 'Registration successful',
+      data: {
+        user: result.user,
+        tokens: result.tokens,
+      },
     });
   } catch (error) {
     res.status(400).json({
+      success: false,
       error: 'Bad Request',
       message: error instanceof Error ? error.message : 'Registration failed',
     });
@@ -88,6 +104,7 @@ export async function refresh(req: Request, res: Response): Promise<void> {
 
     if (!refreshToken) {
       res.status(401).json({
+        success: false,
         error: 'Unauthorized',
         message: 'Refresh token not provided',
       });
@@ -100,10 +117,15 @@ export async function refresh(req: Request, res: Response): Promise<void> {
     res.cookie('refreshToken', tokens.refreshToken, COOKIE_OPTIONS);
 
     res.status(200).json({
+      success: true,
       message: 'Tokens refreshed successfully',
+      data: {
+        tokens,
+      },
     });
   } catch (error) {
     res.status(401).json({
+      success: false,
       error: 'Unauthorized',
       message: error instanceof Error ? error.message : 'Token refresh failed',
     });
@@ -125,6 +147,7 @@ export async function logout(_req: Request, res: Response): Promise<void> {
   });
 
   res.status(200).json({
+    success: true,
     message: 'Logged out successfully',
   });
 }

@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import authRouter from '../features/auth/routes/authRoute.js';
 import adminRouter from '../features/admin/routes/adminRoute.js';
+import paymentRouter from '../features/payment/routes/paymentRoute.js';
 import customersRouter from './customersRoute.js';
 import healthCheckRouter from './healthCheck.js';
 
@@ -12,6 +13,7 @@ const standardRoutes = [
   { path: '/healthCheck', router: healthCheckRouter },
   { path: '/admin', router: adminRouter },
   { path: '/customers', router: customersRouter },
+  { path: '/payments', router: paymentRouter },
 ];
 
 standardRoutes.forEach(({ path, router: routeRouter }) => {
