@@ -40,3 +40,10 @@ export function getDatabase(): Db {
   }
   return db;
 }
+
+export function getMongoClient(): MongoClient {
+  if (!client) {
+    throw new Error('MongoDB client not connected. Call connectDatabase() first.');
+  }
+  return client;
+}
