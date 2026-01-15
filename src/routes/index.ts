@@ -1,8 +1,8 @@
 import express, { Request, Response } from 'express';
-import authRouter from '../features/auth/routes/authRoute';
-import adminRouter from '../features/admin/routes/adminRoute';
-import customersRouter from './customersRoute';
-import healthCheckRouter from './healthCheck';
+import authRouter from '../features/auth/routes/authRoute.js';
+import adminRouter from '../features/admin/routes/adminRoute.js';
+import customersRouter from './customersRoute.js';
+import healthCheckRouter from './healthCheck.js';
 
 const router = express.Router();
 

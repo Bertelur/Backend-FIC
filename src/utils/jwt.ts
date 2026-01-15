@@ -1,5 +1,5 @@
 import * as jose from 'jose';
-import { TokenPayload, UserRole, UserType } from '../features/auth/interfaces/auth.types';
+import { TokenPayload, UserRole, UserType } from '../features/auth/interfaces/auth.types.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET;

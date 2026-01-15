@@ -16,6 +16,7 @@
   "name": "backend-fic",
   "version": "1.0.0",
   "description": "Backend service support for FIC project",
+  "type": "module",
   "main": "dist/index.js",
   "devDependencies": {
     "@types/cors": "^2.8.19",

@@ -1,8 +1,8 @@
-import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../../../utils/jwt';
-import { comparePassword, hashPassword } from '../../../utils/password';
-import { LoginRequest, RegisterRequest, AuthResponse } from '../interfaces/auth.types';
-import * as dashboardUserRepo from '../repositories/dashboardUser.repository';
-import * as buyerRepo from '../repositories/buyer.repository';
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../../../utils/jwt.js';
+import { comparePassword, hashPassword } from '../../../utils/password.js';
+import { LoginRequest, RegisterRequest, AuthResponse } from '../interfaces/auth.types.js';
+import * as dashboardUserRepo from '../repositories/dashboardUser.repository.js';
+import * as buyerRepo from '../repositories/buyer.repository.js';
 
 export async function loginDashboardUser(username: string, password: string): Promise<AuthResponse> {
   const user = await dashboardUserRepo.findDashboardUserByUsername(username);

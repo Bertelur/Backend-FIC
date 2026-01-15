@@ -1,5 +1,5 @@
-import { getDashboardUserCollection, createDashboardUserIndexes } from '../models/DashboardUser';
-import { DashboardUser } from '../interfaces/auth.types';
+import { getDashboardUserCollection, createDashboardUserIndexes } from '../models/DashboardUser.js';
+import { DashboardUser } from '../interfaces/auth.types.js';
 
 export async function initializeDashboardUserIndexes(): Promise<void> {
   await createDashboardUserIndexes();

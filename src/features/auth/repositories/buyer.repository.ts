@@ -1,5 +1,5 @@
-import { getBuyerCollection, createBuyerIndexes } from '../models/Buyer';
-import { Buyer } from '../interfaces/auth.types';
+import { getBuyerCollection, createBuyerIndexes } from '../models/Buyer.js';
+import { Buyer } from '../interfaces/auth.types.js';
 
 export async function initializeBuyerIndexes(): Promise<void> {
   await createBuyerIndexes();

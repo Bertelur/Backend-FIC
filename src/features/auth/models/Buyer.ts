@@ -1,8 +1,8 @@
-import { Collection } from "mongodb";
-import { getDatabase } from "../../../config/database";
-import { Buyer } from "../interfaces/auth.types";
+import { Collection } from 'mongodb';
+import { getDatabase } from '../../../config/database.js';
+import { Buyer } from '../interfaces/auth.types.js';
 
-const COLLECTION_NAME = "buyers";
+const COLLECTION_NAME = 'buyers';
 
 export function getBuyerCollection(): Collection<Buyer> {
   const db = getDatabase();

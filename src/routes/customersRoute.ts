@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { authenticateToken } from '../middleware/auth';
-import { requireRole } from '../middleware/auth';
-import * as buyerRepo from '../features/auth/repositories/buyer.repository';
+import { authenticateToken } from '../middleware/auth.js';
+import { requireRole } from '../middleware/auth.js';
+import * as buyerRepo from '../features/auth/repositories/buyer.repository.js';
 import { Response } from 'express';
-import { AuthRequest } from '../middleware/auth';
+import { AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 

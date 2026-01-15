@@ -5,11 +5,11 @@ import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import * as Sentry from '@sentry/node';
-import { initSentry } from './config/sentry';
-import { connectDatabase, closeDatabase } from './config/database';
-import router from './routes';
-import { initializeDashboardUserIndexes } from './features/auth/repositories/dashboardUser.repository';
-import { initializeBuyerIndexes } from './features/auth/repositories/buyer.repository';
+import { initSentry } from './config/sentry.js';
+import { connectDatabase, closeDatabase } from './config/database.js';
+import router from './routes/index.js';
+import { initializeDashboardUserIndexes } from './features/auth/repositories/dashboardUser.repository.js';
+import { initializeBuyerIndexes } from './features/auth/repositories/buyer.repository.js';
 
 dotenv.config();
 

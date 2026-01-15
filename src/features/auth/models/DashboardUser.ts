@@ -1,6 +1,6 @@
 import { Collection } from 'mongodb';
-import { getDatabase } from '../../../config/database';
-import { DashboardUser } from '../interfaces/auth.types';
+import { getDatabase } from '../../../config/database.js';
+import { DashboardUser } from '../interfaces/auth.types.js';
 
 const COLLECTION_NAME = 'dashboard_users';
 

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import * as authService from '../services/auth.service';
-import { LoginRequest, RegisterRequest } from '../interfaces/auth.types';
+import * as authService from '../services/auth.service.js';
+import { LoginRequest, RegisterRequest } from '../interfaces/auth.types.js';
 
 const COOKIE_OPTIONS = {
   httpOnly: true,

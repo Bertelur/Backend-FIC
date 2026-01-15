@@ -1,9 +1,9 @@
 import { Response } from 'express';
-import { AuthRequest } from '../../../middleware/auth';
-import * as dashboardUserRepo from '../../auth/repositories/dashboardUser.repository';
-import * as buyerRepo from '../../auth/repositories/buyer.repository';
-import { hashPassword } from '../../../utils/password';
-import { UserRole } from '../../auth/interfaces/auth.types';
+import { AuthRequest } from '../../../middleware/auth.js';
+import * as dashboardUserRepo from '../../auth/repositories/dashboardUser.repository.js';
+import * as buyerRepo from '../../auth/repositories/buyer.repository.js';
+import { hashPassword } from '../../../utils/password.js';
+import { UserRole } from '../../auth/interfaces/auth.types.js';
 
 export async function getDashboard(req: AuthRequest, res: Response): Promise<void> {
   try {
