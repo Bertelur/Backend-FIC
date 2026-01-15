@@ -5,14 +5,19 @@ import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import * as Sentry from '@sentry/node';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { initSentry } from './config/sentry.js';
 import { connectDatabase, closeDatabase } from './config/database.js';
 import router from './routes/index.js';
 import { initializeDashboardUserIndexes } from './features/auth/repositories/dashboardUser.repository.js';
 import { initializeBuyerIndexes } from './features/auth/repositories/buyer.repository.js';
 import { initializePaymentIndexes } from './features/payment/repositories/payment.repository.js';
+import { initializeProductIndexes } from './features/product/repositories/product.repository.js';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 initSentry();
 
@@ -30,6 +35,9 @@ app.use(morgan('dev'));
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve uploaded files (e.g. product images)
+app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
 
 app.use('/api/v1', router);
 
@@ -57,6 +65,7 @@ async function startServer() {
     await initializeDashboardUserIndexes();
     await initializeBuyerIndexes();
     await initializePaymentIndexes();
+    await initializeProductIndexes();
 
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT} in ${process.env.NODE_ENV || 'development'} environment`);

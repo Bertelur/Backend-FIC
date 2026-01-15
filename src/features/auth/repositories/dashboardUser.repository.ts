@@ -20,7 +20,19 @@ export async function createDashboardUser(user: Omit<DashboardUser, '_id' | 'cre
 
 export async function findDashboardUserByUsername(username: string): Promise<DashboardUser | null> {
   const collection = getDashboardUserCollection();
-  return await collection.findOne({ username });
+  return await collection.findOne(
+    { username },
+    {
+      projection: {
+        _id: 1,
+        username: 1,
+        password: 1,
+        role: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      },
+    },
+  );
 }
 
 export async function findDashboardUserById(id: string): Promise<DashboardUser | null> {

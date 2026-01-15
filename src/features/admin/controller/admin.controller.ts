@@ -1,9 +1,107 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { AuthRequest } from '../../../middleware/auth.js';
 import * as dashboardUserRepo from '../../auth/repositories/dashboardUser.repository.js';
 import * as buyerRepo from '../../auth/repositories/buyer.repository.js';
 import { hashPassword } from '../../../utils/password.js';
 import { UserRole } from '../../auth/interfaces/auth.types.js';
+import { generateAccessToken, generateRefreshToken } from '../../../utils/jwt.js';
+
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict' as const,
+  path: '/' as const,
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+};
+
+export async function bootstrapSuperAdmin(req: Request, res: Response): Promise<void> {
+  try {
+    const expectedToken = process.env.ADMIN_BOOTSTRAP_TOKEN;
+    const providedToken = req.get('x-bootstrap-token');
+
+    if (process.env.NODE_ENV === 'production' && !expectedToken) {
+      res.status(500).json({
+        error: 'Internal Server Error',
+        message: 'ADMIN_BOOTSTRAP_TOKEN is not set',
+      });
+      return;
+    }
+
+    if (expectedToken && providedToken !== expectedToken) {
+      res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Invalid bootstrap token',
+      });
+      return;
+    }
+
+    const { username, password } = req.body ?? {};
+    if (!username || !password) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'Username and password are required',
+      });
+      return;
+    }
+
+    const existingCount = await dashboardUserRepo.countDashboardUsers();
+    if (existingCount > 0) {
+      res.status(409).json({
+        error: 'Conflict',
+        message: 'Bootstrap already completed',
+      });
+      return;
+    }
+
+    const existingUser = await dashboardUserRepo.findDashboardUserByUsername(username);
+    if (existingUser) {
+      res.status(409).json({
+        error: 'Conflict',
+        message: 'Username already exists',
+      });
+      return;
+    }
+
+    const hashedPassword = await hashPassword(password);
+
+    const newUser = await dashboardUserRepo.createDashboardUser({
+      username,
+      password: hashedPassword,
+      role: 'super-admin',
+    });
+
+    const accessToken = await generateAccessToken({
+      userId: newUser._id!,
+      type: 'dashboard',
+      role: 'super-admin',
+    });
+
+    const refreshToken = await generateRefreshToken({
+      userId: newUser._id!,
+      type: 'dashboard',
+      role: 'super-admin',
+    });
+
+    res.cookie('accessToken', accessToken, COOKIE_OPTIONS);
+    res.cookie('refreshToken', refreshToken, COOKIE_OPTIONS);
+
+    const { password: _, ...userWithoutPassword } = newUser as any;
+
+    res.status(201).json({
+      success: true,
+      message: 'Bootstrap super-admin created',
+      data: {
+        user: { ...userWithoutPassword, type: 'dashboard' },
+        tokens: { accessToken, refreshToken },
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Failed to bootstrap super-admin',
+    });
+  }
+}
 
 export async function getDashboard(req: AuthRequest, res: Response): Promise<void> {
   try {

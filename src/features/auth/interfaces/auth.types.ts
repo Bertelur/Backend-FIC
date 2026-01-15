@@ -31,13 +31,15 @@ export interface LoginRequest {
   username?: string;
   email?: string;
   password: string;
-  type: UserType;
+  type?: UserType;
 }
 
 export interface RegisterRequest {
-  email: string;
+  type?: UserType;
+  email?: string;
   username: string;
   password: string;
+  role?: UserRole;
 }
 
 export interface AuthResponse {

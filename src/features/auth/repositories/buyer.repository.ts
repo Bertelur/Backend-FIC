@@ -30,9 +30,21 @@ export async function findBuyerByUsername(username: string): Promise<Buyer | nul
 
 export async function findBuyerByEmailOrUsername(emailOrUsername: string): Promise<Buyer | null> {
   const collection = getBuyerCollection();
-  return await collection.findOne({
-    $or: [{ email: emailOrUsername }, { username: emailOrUsername }],
-  });
+  return await collection.findOne(
+    {
+      $or: [{ email: emailOrUsername }, { username: emailOrUsername }],
+    },
+    {
+      projection: {
+        _id: 1,
+        email: 1,
+        username: 1,
+        password: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      },
+    },
+  );
 }
 
 export async function findBuyerById(id: string): Promise<Buyer | null> {
