@@ -1,4 +1,4 @@
-import { ObjectId } from 'mongodb';
+import { ClientSession, ObjectId } from 'mongodb';
 import { getDatabase } from '../../../config/database.js';
 import type { Product } from '../models/Product.js';
 import type { ListProductsQuery } from '../interfaces/product.types.js';
@@ -42,6 +42,58 @@ export async function findProducts(query: ListProductsQuery): Promise<Product[]>
   const skip = Math.max(query.skip ?? 0, 0);
 
   return await collection.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).toArray();
+}
+
+export async function reserveStockExact(
+  reservations: Array<{ id: ObjectId | string; quantity: number }>,
+  session: ClientSession
+): Promise<void> {
+  if (reservations.length === 0) return;
+
+  const collection = getCollection();
+
+  for (const reservation of reservations) {
+    if (reservation.quantity <= 0) continue;
+
+    const result = await collection.updateOne(
+      { _id: reservation.id as any, stock: { $gte: reservation.quantity } } as any,
+      { $inc: { stock: -reservation.quantity } },
+      { session }
+    );
+
+    if (result.modifiedCount !== 1) {
+      throw new Error('Insufficient stock');
+    }
+  }
+}
+
+export async function releaseStockAny(
+  releases: Array<{ productId: string; productIdType?: 'objectId' | 'string'; quantity: number }>,
+  session?: ClientSession
+): Promise<void> {
+  if (releases.length === 0) return;
+
+  const collection = getCollection();
+
+  for (const release of releases) {
+    if (!release.productId || release.quantity <= 0) continue;
+
+    let exactId: ObjectId | string | undefined;
+
+    if (release.productIdType === 'objectId' && ObjectId.isValid(release.productId)) {
+      exactId = new ObjectId(release.productId);
+    } else if (release.productIdType === 'string') {
+      exactId = release.productId;
+    } else {
+      const product = await findProductByIdAny(release.productId);
+      exactId = product?._id;
+    }
+
+    if (!exactId) continue;
+
+    const options = session ? { session } : {};
+    await collection.updateOne({ _id: exactId as any } as any, { $inc: { stock: release.quantity } }, options);
+  }
 }
 
 export async function countProducts(query: ListProductsQuery): Promise<number> {
@@ -237,4 +289,20 @@ export async function initializeProductIndexes(): Promise<void> {
   await collection.createIndex({ category: 1 });
   await collection.createIndex({ status: 1 });
   await collection.createIndex({ createdAt: -1 });
+}
+
+export async function findProductsByIdsAny(ids: string[]): Promise<Product[]> {
+  const collection = getCollection();
+  const uniqueIds = Array.from(new Set(ids.map((s) => String(s).trim()).filter(Boolean)));
+  if (uniqueIds.length === 0) return [];
+
+  const orFilters: any[] = [];
+  for (const id of uniqueIds.slice(0, 100)) {
+    if (ObjectId.isValid(id)) {
+      orFilters.push({ _id: new ObjectId(id) });
+    }
+    orFilters.push({ _id: id });
+  }
+
+  return await collection.find({ $or: orFilters }).toArray();
 }

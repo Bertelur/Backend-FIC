@@ -55,3 +55,22 @@ export function requireRole(...allowedRoles: UserRole[]) {
     next();
   };
 }
+
+export function requireUserType(...allowedTypes: Array<TokenPayload['type']>) {
+  return (req: AuthRequest, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized', message: 'Not authenticated' });
+      return;
+    }
+
+    if (!allowedTypes.includes(req.user.type)) {
+      res.status(403).json({
+        error: 'Forbidden',
+        message: `Access requires user type: ${allowedTypes.join(' or ')}`,
+      });
+      return;
+    }
+
+    next();
+  };
+}

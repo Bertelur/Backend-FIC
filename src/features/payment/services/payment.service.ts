@@ -2,13 +2,61 @@ import { getInvoice } from '../../../config/xendit.js';
 import type { CreatePaymentRequest, PaymentResponse } from '../interfaces/payment.types.js';
 import * as paymentRepo from '../repositories/payment.repository.js';
 import { ObjectId } from 'mongodb';
+import * as invoiceService from '../../invoice/services/invoice.service.js';
+import { getDatabase, getMongoClient } from '../../../config/database.js';
+import type { Payment } from '../models/Payment.js';
+import * as productsRepo from '../../product/repositories/product.repository.js';
+import * as cartRepo from '../../cart/repositories/cart.repository.js';
+
+async function releaseReservedStockIfNeeded(payment: Payment): Promise<void> {
+  if (!payment.stockReservedAt || payment.stockReleasedAt) return;
+  if (payment.status !== 'expired' && payment.status !== 'failed') return;
+
+  const releases = (payment.items ?? [])
+    .filter((i) => typeof i.productId === 'string' && i.productId.length > 0 && typeof i.quantity === 'number' && i.quantity > 0)
+    .map((i) => ({
+      productId: i.productId as string,
+      productIdType: i.productIdType,
+      quantity: i.quantity,
+    }));
+
+  const client = getMongoClient();
+  const session = client.startSession();
+  try {
+    await session.withTransaction(async () => {
+      const db = getDatabase();
+      const collection = db.collection<Payment>('payments');
+
+      const fresh = await collection.findOne({ externalId: payment.externalId }, { session });
+      if (!fresh) return;
+      if (!fresh.stockReservedAt || fresh.stockReleasedAt) return;
+
+      if (releases.length > 0) {
+        await productsRepo.releaseStockAny(releases, session);
+      }
+
+      await collection.updateOne(
+        { externalId: payment.externalId, $or: [{ stockReleasedAt: { $exists: false } }, { stockReleasedAt: null }] } as any,
+        { $set: { stockReleasedAt: new Date(), updatedAt: new Date() } },
+        { session },
+      );
+    });
+  } finally {
+    await session.endSession();
+  }
+
+  if (payment.userId) {
+    await cartRepo.clearCartCheckoutIfMatches(payment.userId, payment.externalId);
+  }
+}
 
 export async function createInvoice(
   paymentData: CreatePaymentRequest,
   userId?: ObjectId,
+  opts?: { stockReservedAt?: Date; externalId?: string },
 ): Promise<PaymentResponse> {
   // Generate unique external ID
-  const externalId = `PAYMENT-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+  const externalId = opts?.externalId || `PAYMENT-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
   // Prepare invoice data for Xendit
   const invoiceData: any = {
@@ -29,7 +77,7 @@ export async function createInvoice(
   }
 
   if (paymentData.items && paymentData.items.length > 0) {
-    invoiceData.items = paymentData.items;
+    invoiceData.items = paymentData.items.map(({ productIdType, ...rest }) => rest);
   }
 
   if (paymentData.successRedirectUrl) {
@@ -58,6 +106,7 @@ export async function createInvoice(
     amount: paymentData.amount,
     currency: paymentData.currency || 'IDR',
     status: 'pending',
+    stockReservedAt: opts?.stockReservedAt,
     description: paymentData.description,
     invoiceUrl: xenditInvoice.invoiceUrl,
     expiryDate: xenditInvoice.expiryDate ? new Date(xenditInvoice.expiryDate) : undefined,
@@ -109,6 +158,16 @@ export async function getInvoiceById(externalId: string): Promise<PaymentRespons
       );
 
       if (updatedPayment) {
+        if (updatedPayment.status === 'paid') {
+          await invoiceService.ensureInvoiceForPaidPayment(updatedPayment);
+          if (updatedPayment.userId) {
+            await cartRepo.finalizeCheckoutIfMatches(updatedPayment.userId, updatedPayment.externalId);
+          }
+        }
+
+        if (updatedPayment.status === 'expired' || updatedPayment.status === 'failed') {
+          await releaseReservedStockIfNeeded(updatedPayment);
+        }
         return {
           id: updatedPayment._id!.toString(),
           externalId: updatedPayment.externalId,
@@ -180,20 +239,89 @@ export async function handleWebhook(webhookData: any): Promise<void> {
         : undefined;
 
   // Update payment status
-  await paymentRepo.updatePaymentStatus(
+  const updated = await paymentRepo.updatePaymentStatus(
     payment.externalId,
     mappedStatus,
     mappedStatus === 'paid' ? paidAt : undefined,
     paymentMethodStored,
   );
+
+  const finalPayment = updated ?? payment;
+  if (finalPayment.status === 'paid') {
+    await invoiceService.ensureInvoiceForPaidPayment(finalPayment);
+    if (finalPayment.userId) {
+      await cartRepo.finalizeCheckoutIfMatches(finalPayment.userId, finalPayment.externalId);
+    }
+  }
+
+  if (finalPayment.status === 'expired' || finalPayment.status === 'failed') {
+    await releaseReservedStockIfNeeded(finalPayment);
+  }
 }
 
 export async function getPaymentsByUserId(
   userId: ObjectId,
   limit: number = 10,
   skip: number = 0,
+  opts?: { refresh?: boolean },
 ): Promise<PaymentResponse[]> {
-  const payments = await paymentRepo.findPaymentsByUserId(userId, limit, skip);
+  let payments = await paymentRepo.findPaymentsByUserId(userId, limit, skip);
+
+  // Optional: refresh statuses from Xendit for better UX when webhook is delayed.
+  if (opts?.refresh) {
+    const Invoice = getInvoice();
+    const statusMap: Record<string, 'pending' | 'paid' | 'expired' | 'failed'> = {
+      PENDING: 'pending',
+      ACTIVE: 'pending',
+      PAID: 'paid',
+      SETTLED: 'paid',
+      EXPIRED: 'expired',
+      FAILED: 'failed',
+      CANCELLED: 'failed',
+      VOIDED: 'failed',
+    };
+
+    const refreshed = await Promise.all(
+      payments.map(async (payment) => {
+        // Only refresh if it isn't already terminal paid/expired/failed? We'll refresh everything lightly.
+        try {
+          const xenditInvoice = await Invoice.getInvoiceById({ invoiceId: payment.xenditInvoiceId });
+          const normalizedStatus = typeof xenditInvoice.status === 'string' ? xenditInvoice.status.toUpperCase() : '';
+          const mappedStatus = statusMap[normalizedStatus] || 'failed';
+          if (mappedStatus === payment.status) return payment;
+
+          const paidAtCandidate = (xenditInvoice as any).paidAt || (xenditInvoice as any).paid_at || xenditInvoice.updated;
+          const paidAt = mappedStatus === 'paid' && paidAtCandidate ? new Date(paidAtCandidate) : undefined;
+
+          const updated = await paymentRepo.updatePaymentStatus(
+            payment.externalId,
+            mappedStatus,
+            mappedStatus === 'paid' ? paidAt : undefined,
+            (xenditInvoice as any).paymentMethod,
+          );
+
+          const finalPayment = updated ?? payment;
+          if (finalPayment.status === 'paid') {
+            await invoiceService.ensureInvoiceForPaidPayment(finalPayment);
+          }
+          if (finalPayment.status === 'expired' || finalPayment.status === 'failed') {
+            await releaseReservedStockIfNeeded(finalPayment);
+          }
+          return finalPayment;
+        } catch {
+          return payment;
+        }
+      }),
+    );
+
+    payments = refreshed;
+  }
+
+  // Backfill invoices for already-paid payments (idempotent).
+  const paidPayments = payments.filter((p) => p.status === 'paid');
+  if (paidPayments.length > 0) {
+    await Promise.all(paidPayments.map((p) => invoiceService.ensureInvoiceForPaidPayment(p)));
+  }
 
   return payments.map((payment) => ({
     id: payment._id!.toString(),

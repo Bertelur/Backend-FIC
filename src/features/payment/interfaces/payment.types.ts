@@ -10,6 +10,9 @@ export interface CreatePaymentRequest {
     mobileNumber?: string;
   };
   items?: Array<{
+    productId?: string;
+    productIdType?: 'objectId' | 'string';
+    sku?: string;
     name: string;
     quantity: number;
     price: number;

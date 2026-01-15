@@ -85,10 +85,13 @@ export async function getMyPayments(req: Request, res: Response): Promise<void> 
 
     const limitParam = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit;
     const skipParam = Array.isArray(req.query.skip) ? req.query.skip[0] : req.query.skip;
+    const refreshParam = Array.isArray(req.query.refresh) ? req.query.refresh[0] : req.query.refresh;
     const limit = limitParam ? parseInt(limitParam as string) : 10;
     const skip = skipParam ? parseInt(skipParam as string) : 0;
 
-    const payments = await paymentService.getPaymentsByUserId(new ObjectId(userId), limit, skip);
+    const refresh = refreshParam === 'true' || refreshParam === '1' || refreshParam === 'yes';
+
+    const payments = await paymentService.getPaymentsByUserId(new ObjectId(userId), limit, skip, { refresh });
 
     res.status(200).json({
       success: true,

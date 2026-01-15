@@ -8,6 +8,8 @@ export interface Payment {
   amount: number;
   currency: string;
   status: 'pending' | 'paid' | 'expired' | 'failed';
+  stockReservedAt?: Date;
+  stockReleasedAt?: Date;
   description?: string;
   invoiceUrl?: string;
   expiryDate?: Date;
@@ -20,6 +22,9 @@ export interface Payment {
     mobileNumber?: string;
   };
   items?: Array<{
+    productId?: string;
+    productIdType?: 'objectId' | 'string';
+    sku?: string;
     name: string;
     quantity: number;
     price: number;
