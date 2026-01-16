@@ -10,6 +10,9 @@ router.post('/', authenticateToken, paymentController.createPayment);
 // Get user's payments (requires authentication) - must come before /:externalId
 router.get('/my', authenticateToken, paymentController.getMyPayments);
 
+// Checkout result: refresh status, finalize cart, and return invoice when paid
+router.get('/:externalId/checkout-result', authenticateToken, paymentController.getCheckoutResult);
+
 // Get payment by external ID
 router.get('/:externalId', paymentController.getPayment);
 

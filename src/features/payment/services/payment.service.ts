@@ -3,6 +3,7 @@ import type { CreatePaymentRequest, PaymentResponse } from '../interfaces/paymen
 import * as paymentRepo from '../repositories/payment.repository.js';
 import { ObjectId } from 'mongodb';
 import * as invoiceService from '../../invoice/services/invoice.service.js';
+import type { InvoiceResponse } from '../../invoice/interfaces/invoice.types.js';
 import { getDatabase, getMongoClient } from '../../../config/database.js';
 import type { Payment } from '../models/Payment.js';
 import * as productsRepo from '../../product/repositories/product.repository.js';
@@ -192,6 +193,40 @@ export async function getInvoiceById(externalId: string): Promise<PaymentRespons
     expiryDate: payment.expiryDate,
     created: payment.createdAt,
   };
+}
+
+export async function getCheckoutResultForUser(
+  userId: ObjectId,
+  externalIdRaw: string,
+): Promise<{ payment: PaymentResponse; invoice: InvoiceResponse | null }> {
+  const externalId = String(externalIdRaw ?? '').trim();
+  if (!externalId) throw new Error('External ID is required');
+
+  const existing = await paymentRepo.findPaymentByExternalId(externalId);
+  if (!existing || !existing.userId || String(existing.userId) !== String(userId)) {
+    throw new Error('Payment not found');
+  }
+
+  // Refresh from Xendit (this may update status in DB).
+  const refreshed = await getInvoiceById(externalId);
+  if (!refreshed) throw new Error('Payment not found');
+
+  // Always re-read the DB doc so we have userId/payloads even if status didn't change.
+  const after = await paymentRepo.findPaymentByExternalId(externalId);
+  if (!after || !after.userId || String(after.userId) !== String(userId)) {
+    throw new Error('Payment not found');
+  }
+
+  if (after.status !== 'paid') {
+    return { payment: refreshed, invoice: null };
+  }
+
+  const invoice = await invoiceService.ensureInvoiceForPaidPayment(after);
+  if (after.userId) {
+    await cartRepo.finalizeCheckoutIfMatches(after.userId, after.externalId);
+  }
+
+  return { payment: refreshed, invoice };
 }
 
 export async function handleWebhook(webhookData: any): Promise<void> {

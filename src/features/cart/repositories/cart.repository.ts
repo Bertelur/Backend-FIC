@@ -63,7 +63,7 @@ export async function clearCartCheckoutIfMatches(userId: ObjectId, externalId: s
     { userId },
     {
       $pull: { activeCheckouts: { externalId } } as any,
-      $set: { updatedAt: now } as any,
+      $set: { updatedAt: now } as adny,
     } as any,
   );
 

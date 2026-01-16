@@ -244,7 +244,14 @@ export async function checkoutCart(userId: ObjectId, input: CheckoutCartRequest)
     throw new Error('Cart is empty');
   }
 
-  // If there is an active pending checkout, return it (unless forceNew)
+  const mergedActive: Array<{ externalId: string; productIds: string[] }> = [
+    ...(Array.isArray(cart.activeCheckouts)
+      ? cart.activeCheckouts.map((e) => ({ externalId: e.externalId, productIds: e.productIds ?? [] }))
+      : []),
+    ...(cart.activeCheckoutExternalId
+      ? [{ externalId: cart.activeCheckoutExternalId, productIds: cart.activeCheckoutProductIds ?? [] }]
+      : []),
+  ];
   const reservedNow = await getPendingReservedProductIds(cart);
 
   const products = await productRepo.findProductsByIdsAny(cart.items.map((i) => i.productId));
@@ -289,7 +296,43 @@ export async function checkoutCart(userId: ObjectId, input: CheckoutCartRequest)
   if (reservedNow) {
     const overlaps = checkoutProductIds.some((id) => isReserved(reservedNow, id));
     if (overlaps) {
-      throw new Error('Checkout in progress');
+      // If selected items are already reserved by an active pending checkout,
+      // return the existing pending payment instead of raising Conflict.
+      // This is especially useful when the client retries checkout with forceNew.
+      const overlappingExternalIds = mergedActive
+        .filter((m) => (m.productIds ?? []).some((pid) => checkoutProductIds.some((c) => idsMatch(c, pid))))
+        .map((m) => m.externalId);
+
+      const candidates = Array.from(new Set(overlappingExternalIds)).filter((v) => v.length > 0);
+      if (candidates.length > 0) {
+        const payments = await paymentRepo.findPaymentsByExternalIds(candidates);
+        const pending = payments
+          .filter((p) => p.status === 'pending')
+          .sort((a, b) => (b.createdAt?.getTime?.() ?? 0) - (a.createdAt?.getTime?.() ?? 0));
+
+        if (pending.length > 0) {
+          const fresh = await paymentService.getInvoiceById(pending[0].externalId);
+          if (fresh) return { reused: true, payment: fresh };
+          return {
+            reused: true,
+            payment: {
+              id: pending[0]._id!.toString(),
+              externalId: pending[0].externalId,
+              status: pending[0].status,
+              amount: pending[0].amount,
+              invoiceUrl: pending[0].invoiceUrl,
+              expiryDate: pending[0].expiryDate,
+              created: pending[0].createdAt,
+            },
+          };
+        }
+      }
+
+      // If we cannot find a pending payment to reuse, keep existing behavior.
+      // (We avoid auto-cancelling here to prevent double-reserve issues.)
+      if (!input.forceNew) throw new Error('Checkout in progress');
+      // forceNew: don't return 409; surface as a bad request so UI can retry/refresh.
+      throw new Error('Unable to create new checkout while a previous checkout is active');
     }
   }
 
