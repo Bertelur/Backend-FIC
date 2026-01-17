@@ -77,6 +77,261 @@ export async function getInvoiceDetails(req: Request, res: Response): Promise<vo
   }
 }
 
+export async function exportInvoicesExcel(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = Array.isArray(req.query.userId) ? req.query.userId[0] : req.query.userId;
+    const limit = parseNumber(Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit);
+
+    const fromRaw = Array.isArray(req.query.from) ? req.query.from[0] : req.query.from;
+    const toRaw = Array.isArray(req.query.to) ? req.query.to[0] : req.query.to;
+    const startDateRaw = Array.isArray(req.query.startDate) ? req.query.startDate[0] : req.query.startDate;
+    const endDateRaw = Array.isArray(req.query.endDate) ? req.query.endDate[0] : req.query.endDate;
+
+    const from = parseDate(fromRaw ?? startDateRaw);
+    const to = parseDate(toRaw ?? endDateRaw);
+
+    if (from && to && from.getTime() > to.getTime()) {
+      res.status(400).json({ error: 'Bad Request', message: '`from` must be <= `to`' });
+      return;
+    }
+
+    const result = await invoiceService.exportInvoicesExcelReport({
+      userId: typeof userId === 'string' ? userId : undefined,
+      from,
+      to,
+      limit: typeof limit === 'number' ? limit : undefined,
+    });
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+    res.status(200).send(result.buffer);
+  } catch (error) {
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Failed to export invoices',
+    });
+  }
+}
+
+export async function exportMyInvoicesExcel(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = (req as any).user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized', message: 'User authentication required' });
+      return;
+    }
+
+    const limit = parseNumber(Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit);
+    const fromRaw = Array.isArray(req.query.from) ? req.query.from[0] : req.query.from;
+    const toRaw = Array.isArray(req.query.to) ? req.query.to[0] : req.query.to;
+    const startDateRaw = Array.isArray(req.query.startDate) ? req.query.startDate[0] : req.query.startDate;
+    const endDateRaw = Array.isArray(req.query.endDate) ? req.query.endDate[0] : req.query.endDate;
+
+    const from = parseDate(fromRaw ?? startDateRaw);
+    const to = parseDate(toRaw ?? endDateRaw);
+
+    if (from && to && from.getTime() > to.getTime()) {
+      res.status(400).json({ error: 'Bad Request', message: '`from` must be <= `to`' });
+      return;
+    }
+
+    const result = await invoiceService.exportInvoicesExcelReport({
+      userId: String(userId),
+      from,
+      to,
+      limit: typeof limit === 'number' ? limit : undefined,
+    });
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+    res.status(200).send(result.buffer);
+  } catch (error) {
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Failed to export invoices',
+    });
+  }
+}
+
+function parseDateField(value: unknown): 'createdAt' | 'paidAt' | undefined {
+  if (typeof value !== 'string') return undefined;
+  const v = value.trim();
+  if (v === 'createdAt' || v === 'paidAt') return v;
+  return undefined;
+}
+
+export async function getSalesReport(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = Array.isArray(req.query.userId) ? req.query.userId[0] : req.query.userId;
+    const limit = parseNumber(Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit);
+
+    const fromRaw = Array.isArray(req.query.from) ? req.query.from[0] : req.query.from;
+    const toRaw = Array.isArray(req.query.to) ? req.query.to[0] : req.query.to;
+    const startDateRaw = Array.isArray(req.query.startDate) ? req.query.startDate[0] : req.query.startDate;
+    const endDateRaw = Array.isArray(req.query.endDate) ? req.query.endDate[0] : req.query.endDate;
+    const dateFieldRaw = Array.isArray(req.query.dateField) ? req.query.dateField[0] : req.query.dateField;
+
+    const from = parseDate(fromRaw ?? startDateRaw);
+    const to = parseDate(toRaw ?? endDateRaw);
+    const dateField = parseDateField(dateFieldRaw) ?? 'paidAt';
+
+    if (from && to && from.getTime() > to.getTime()) {
+      res.status(400).json({ error: 'Bad Request', message: '`from` must be <= `to`' });
+      return;
+    }
+
+    const report = await invoiceService.getSalesReport({
+      userId: typeof userId === 'string' ? userId : undefined,
+      from,
+      to,
+      dateField,
+      limit: typeof limit === 'number' ? limit : undefined,
+    });
+
+    res.status(200).json({ success: true, data: report });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Failed to get sales report',
+    });
+  }
+}
+
+export async function exportSalesReportExcel(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = Array.isArray(req.query.userId) ? req.query.userId[0] : req.query.userId;
+    const limit = parseNumber(Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit);
+
+    const fromRaw = Array.isArray(req.query.from) ? req.query.from[0] : req.query.from;
+    const toRaw = Array.isArray(req.query.to) ? req.query.to[0] : req.query.to;
+    const startDateRaw = Array.isArray(req.query.startDate) ? req.query.startDate[0] : req.query.startDate;
+    const endDateRaw = Array.isArray(req.query.endDate) ? req.query.endDate[0] : req.query.endDate;
+    const dateFieldRaw = Array.isArray(req.query.dateField) ? req.query.dateField[0] : req.query.dateField;
+
+    const from = parseDate(fromRaw ?? startDateRaw);
+    const to = parseDate(toRaw ?? endDateRaw);
+    const dateField = parseDateField(dateFieldRaw) ?? 'paidAt';
+
+    if (from && to && from.getTime() > to.getTime()) {
+      res.status(400).json({ error: 'Bad Request', message: '`from` must be <= `to`' });
+      return;
+    }
+
+    const result = await invoiceService.exportSalesReportExcel({
+      userId: typeof userId === 'string' ? userId : undefined,
+      from,
+      to,
+      dateField,
+      limit: typeof limit === 'number' ? limit : undefined,
+    });
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+    res.status(200).send(result.buffer);
+  } catch (error) {
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Failed to export sales report',
+    });
+  }
+}
+
+export async function getMySalesReport(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = (req as any).user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized', message: 'User authentication required' });
+      return;
+    }
+
+    const limit = parseNumber(Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit);
+    const fromRaw = Array.isArray(req.query.from) ? req.query.from[0] : req.query.from;
+    const toRaw = Array.isArray(req.query.to) ? req.query.to[0] : req.query.to;
+    const startDateRaw = Array.isArray(req.query.startDate) ? req.query.startDate[0] : req.query.startDate;
+    const endDateRaw = Array.isArray(req.query.endDate) ? req.query.endDate[0] : req.query.endDate;
+    const dateFieldRaw = Array.isArray(req.query.dateField) ? req.query.dateField[0] : req.query.dateField;
+
+    const from = parseDate(fromRaw ?? startDateRaw);
+    const to = parseDate(toRaw ?? endDateRaw);
+    const dateField = parseDateField(dateFieldRaw) ?? 'paidAt';
+
+    if (from && to && from.getTime() > to.getTime()) {
+      res.status(400).json({ error: 'Bad Request', message: '`from` must be <= `to`' });
+      return;
+    }
+
+    const report = await invoiceService.getSalesReport({
+      userId: String(userId),
+      from,
+      to,
+      dateField,
+      limit: typeof limit === 'number' ? limit : undefined,
+    });
+
+    res.status(200).json({ success: true, data: report });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Failed to get sales report',
+    });
+  }
+}
+
+export async function exportMySalesReportExcel(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = (req as any).user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized', message: 'User authentication required' });
+      return;
+    }
+
+    const limit = parseNumber(Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit);
+    const fromRaw = Array.isArray(req.query.from) ? req.query.from[0] : req.query.from;
+    const toRaw = Array.isArray(req.query.to) ? req.query.to[0] : req.query.to;
+    const startDateRaw = Array.isArray(req.query.startDate) ? req.query.startDate[0] : req.query.startDate;
+    const endDateRaw = Array.isArray(req.query.endDate) ? req.query.endDate[0] : req.query.endDate;
+    const dateFieldRaw = Array.isArray(req.query.dateField) ? req.query.dateField[0] : req.query.dateField;
+
+    const from = parseDate(fromRaw ?? startDateRaw);
+    const to = parseDate(toRaw ?? endDateRaw);
+    const dateField = parseDateField(dateFieldRaw) ?? 'paidAt';
+
+    if (from && to && from.getTime() > to.getTime()) {
+      res.status(400).json({ error: 'Bad Request', message: '`from` must be <= `to`' });
+      return;
+    }
+
+    const result = await invoiceService.exportSalesReportExcel({
+      userId: String(userId),
+      from,
+      to,
+      dateField,
+      limit: typeof limit === 'number' ? limit : undefined,
+    });
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+    res.status(200).send(result.buffer);
+  } catch (error) {
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Failed to export sales report',
+    });
+  }
+}
+
 function parseDate(value: unknown): Date | undefined {
   if (typeof value !== 'string') return undefined;
   const trimmed = value.trim();

@@ -7,22 +7,55 @@ const router = Router();
 // Buyer: list own invoices
 router.get('/my', authenticateToken, requireUserType('buyer'), invoiceController.getMyInvoices);
 
+// Buyer: export own invoices (.xlsx)
+router.get('/my/export', authenticateToken, requireUserType('buyer'), invoiceController.exportMyInvoicesExcel);
+
+// Buyer: sales report (JSON)
+router.get('/my/report', authenticateToken, requireUserType('buyer'), invoiceController.getMySalesReport);
+
+// Buyer: sales report export (.xlsx)
+router.get('/my/report/export', authenticateToken, requireUserType('buyer'), invoiceController.exportMySalesReportExcel);
+
 // Dashboard: list all invoices (optionally filter by userId)
-router.get('/', authenticateToken, requireRole('admin', 'super-admin', 'keuangan', 'staff'), invoiceController.getInvoices);
+router.get('/', authenticateToken, requireRole('admin', 'super-admin', 'keuangan'), invoiceController.getInvoices);
 
 // Dashboard: overview stats for dashboard cards
 router.get(
   '/overview',
   authenticateToken,
-  requireRole('admin', 'super-admin', 'keuangan', 'staff'),
+  requireRole('admin', 'super-admin', 'keuangan'),
   invoiceController.getInvoicesOverview,
+);
+
+// Dashboard: sales report (JSON)
+router.get(
+  '/report',
+  authenticateToken,
+  requireRole('admin', 'super-admin', 'keuangan'),
+  invoiceController.getSalesReport,
+);
+
+// Dashboard: sales report export (.xlsx)
+router.get(
+  '/report/export',
+  authenticateToken,
+  requireRole('admin', 'super-admin', 'keuangan'),
+  invoiceController.exportSalesReportExcel,
+);
+
+// Dashboard: export invoices (.xlsx) with optional date range
+router.get(
+  '/export',
+  authenticateToken,
+  requireRole('admin', 'super-admin', 'keuangan'),
+  invoiceController.exportInvoicesExcel,
 );
 
 // Dashboard: invoice detail
 router.get(
   '/:id',
   authenticateToken,
-  requireRole('admin', 'super-admin', 'keuangan', 'staff'),
+  requireRole('admin', 'super-admin', 'keuangan'),
   invoiceController.getInvoiceDetails,
 );
 

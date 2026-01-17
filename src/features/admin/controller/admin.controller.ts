@@ -170,25 +170,14 @@ export async function createUser(req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    // Role-based restrictions
-    if (currentUserRole === 'admin') {
-      // Admin can only create staff and keuangan
-      if (role !== 'staff' && role !== 'keuangan') {
-        res.status(403).json({
-          error: 'Forbidden',
-          message: 'Admin can only create staff and keuangan roles',
-        });
-        return;
-      }
-    } else if (currentUserRole !== 'super-admin') {
-      // Only super-admin and admin can create users (admin case handled above)
+    // Only super-admin can create users
+    if (currentUserRole !== 'super-admin') {
       res.status(403).json({
         error: 'Forbidden',
-        message: 'Insufficient permissions to create admin users',
+        message: 'Only super-admin can create users',
       });
       return;
     }
-    // super-admin can create any role (no restriction needed)
 
     const existingUser = await dashboardUserRepo.findDashboardUserByUsername(username);
     if (existingUser) {

@@ -59,6 +59,28 @@ export async function createInvoice(
   // Generate unique external ID
   const externalId = opts?.externalId || `PAYMENT-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
+  // If customer info is not provided by client (common in cart checkout),
+  // try to fill minimally from buyer profile so invoices/reports are usable.
+  let resolvedCustomer = paymentData.customer;
+  if (!resolvedCustomer && userId) {
+    const db = getDatabase();
+    const buyer = await db
+      .collection<{ _id: ObjectId; email?: string; username?: string }>('buyers')
+      .findOne(
+        { _id: userId },
+        { projection: { email: 1, username: 1 } as any },
+      );
+
+    const email = typeof buyer?.email === 'string' ? buyer.email.trim() : '';
+    const username = typeof buyer?.username === 'string' ? buyer.username.trim() : '';
+    if (email) {
+      resolvedCustomer = {
+        givenNames: username || email,
+        email,
+      };
+    }
+  }
+
   // Prepare invoice data for Xendit
   const invoiceData: any = {
     externalId,
@@ -68,12 +90,12 @@ export async function createInvoice(
     invoiceDuration: paymentData.invoiceDuration || 86400, // 24 hours default
   };
 
-  if (paymentData.customer) {
+  if (resolvedCustomer) {
     invoiceData.customer = {
-      givenNames: paymentData.customer.givenNames,
-      surname: paymentData.customer.surname,
-      email: paymentData.customer.email,
-      mobileNumber: paymentData.customer.mobileNumber,
+      givenNames: resolvedCustomer.givenNames,
+      surname: resolvedCustomer.surname,
+      email: resolvedCustomer.email,
+      mobileNumber: resolvedCustomer.mobileNumber,
     };
   }
 
@@ -111,7 +133,7 @@ export async function createInvoice(
     description: paymentData.description,
     invoiceUrl: xenditInvoice.invoiceUrl,
     expiryDate: xenditInvoice.expiryDate ? new Date(xenditInvoice.expiryDate) : undefined,
-    customer: paymentData.customer,
+    customer: resolvedCustomer,
     items: paymentData.items,
   });
 
@@ -367,4 +389,27 @@ export async function getPaymentsByUserId(
     expiryDate: payment.expiryDate,
     created: payment.createdAt,
   }));
+}
+
+export async function getAllPayments(
+  limit: number = 20,
+  skip: number = 0,
+  status?: 'pending' | 'paid' | 'expired' | 'failed',
+): Promise<{ payments: PaymentResponse[]; total: number; limit: number; skip: number }> {
+  const result = await paymentRepo.findAllPayments(limit, skip, status);
+
+  return {
+    payments: result.payments.map((payment) => ({
+      id: payment._id!.toString(),
+      externalId: payment.externalId,
+      status: payment.status,
+      amount: payment.amount,
+      invoiceUrl: payment.invoiceUrl,
+      expiryDate: payment.expiryDate,
+      created: payment.createdAt,
+    })),
+    total: result.total,
+    limit,
+    skip,
+  };
 }

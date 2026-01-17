@@ -51,6 +51,28 @@ export async function listInvoices(
   return await collection.find(q).sort({ createdAt: -1 }).skip(skip).limit(limit).toArray();
 }
 
+export async function listInvoicesForExport(filter: {
+  userId?: ObjectId;
+  from?: Date;
+  to?: Date;
+}, limit: number): Promise<Invoice[]> {
+  const collection = getCollection();
+  const q: any = {};
+  if (filter.userId) q.userId = filter.userId;
+
+  if (filter.from || filter.to) {
+    q.createdAt = {};
+    if (filter.from) q.createdAt.$gte = filter.from;
+    if (filter.to) q.createdAt.$lte = filter.to;
+  }
+
+  return await collection
+    .find(q)
+    .sort({ createdAt: -1 })
+    .limit(Math.max(0, limit))
+    .toArray();
+}
+
 export async function countInvoices(filter: { userId?: ObjectId }): Promise<number> {
   const collection = getCollection();
   const q: any = {};
@@ -64,4 +86,142 @@ export async function initializeInvoiceIndexes(): Promise<void> {
   await collection.createIndex({ xenditInvoiceId: 1 }, { unique: true });
   await collection.createIndex({ userId: 1 });
   await collection.createIndex({ createdAt: -1 });
+}
+
+export type InvoiceReportDateField = 'createdAt' | 'paidAt';
+
+export interface InvoicesSalesTotalsAggregate {
+  ordersCount: number;
+  totalSalesAmount: number;
+  totalOrderItemsQty: number;
+}
+
+export interface InvoicesItemBreakdownRow {
+  productId?: string;
+  sku?: string;
+  name: string;
+  ordersCount: number;
+  quantity: number;
+  salesAmount: number;
+}
+
+function buildDateMatch(dateField: InvoiceReportDateField, from?: Date, to?: Date): any {
+  if (!from && !to) return {};
+  const q: any = {};
+  if (from) q.$gte = from;
+  if (to) q.$lte = to;
+  return { [dateField]: q };
+}
+
+export async function getInvoicesSalesTotalsAggregate(input: {
+  userId?: ObjectId;
+  from?: Date;
+  to?: Date;
+  dateField?: InvoiceReportDateField;
+}): Promise<InvoicesSalesTotalsAggregate> {
+  const collection = getCollection();
+  const dateField: InvoiceReportDateField = input.dateField ?? 'paidAt';
+
+  const match: any = {
+    ...(input.userId ? { userId: input.userId } : {}),
+    ...buildDateMatch(dateField, input.from, input.to),
+  };
+
+  const result = await collection
+    .aggregate([
+      { $match: match },
+      {
+        $addFields: {
+          itemsQty: {
+            $sum: {
+              $map: {
+                input: { $ifNull: ['$items', []] },
+                as: 'i',
+                in: { $ifNull: ['$$i.quantity', 0] },
+              },
+            },
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          ordersCount: { $sum: 1 },
+          totalSalesAmount: { $sum: { $ifNull: ['$amount', 0] } },
+          totalOrderItemsQty: { $sum: { $ifNull: ['$itemsQty', 0] } },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          ordersCount: 1,
+          totalSalesAmount: 1,
+          totalOrderItemsQty: 1,
+        },
+      },
+    ])
+    .toArray();
+
+  return (
+    (result[0] as InvoicesSalesTotalsAggregate | undefined) ?? {
+      ordersCount: 0,
+      totalSalesAmount: 0,
+      totalOrderItemsQty: 0,
+    }
+  );
+}
+
+export async function getInvoicesItemBreakdown(input: {
+  userId?: ObjectId;
+  from?: Date;
+  to?: Date;
+  dateField?: InvoiceReportDateField;
+  limit?: number;
+}): Promise<InvoicesItemBreakdownRow[]> {
+  const collection = getCollection();
+  const dateField: InvoiceReportDateField = input.dateField ?? 'paidAt';
+  const limit = Math.min(Math.max(input.limit ?? 5000, 1), 20000);
+
+  const match: any = {
+    ...(input.userId ? { userId: input.userId } : {}),
+    ...buildDateMatch(dateField, input.from, input.to),
+  };
+
+  return await collection
+    .aggregate([
+      { $match: match },
+      { $unwind: { path: '$items', preserveNullAndEmptyArrays: false } },
+      {
+        $addFields: {
+          itemQty: { $ifNull: ['$items.quantity', 0] },
+          itemPrice: { $ifNull: ['$items.price', 0] },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            productId: '$items.productId',
+            sku: '$items.sku',
+            name: '$items.name',
+          },
+          invoiceIds: { $addToSet: '$_id' },
+          quantity: { $sum: '$itemQty' },
+          salesAmount: { $sum: { $multiply: ['$itemQty', '$itemPrice'] } },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          productId: { $toString: '$_id.productId' },
+          sku: '$_id.sku',
+          name: '$_id.name',
+          ordersCount: { $size: '$invoiceIds' },
+          quantity: 1,
+          salesAmount: 1,
+        },
+      },
+      { $sort: { salesAmount: -1 } },
+      { $limit: limit },
+    ])
+    .toArray() as any;
 }

@@ -87,23 +87,23 @@ export async function register(req: Request, res: Response): Promise<void> {
       (hasBootstrapHeader && (rawEmail === undefined || rawEmail === null || String(rawEmail).trim() === ''));
 
     // Dashboard registration (protected by x-bootstrap-token)
-    // Supports two payload styles:
-    // 1) { type: 'dashboard', username, password, role }
-    // 2) { type: 'super-admin'|'admin'|'staff'|'keuangan', username, password }  (role inferred from type)
+    // ONLY super-admin can be registered via this endpoint
+    // Other roles must be created via POST /admin with super-admin authentication
     if (isDashboardRegister) {
       const expectedToken = process.env.ADMIN_BOOTSTRAP_TOKEN;
       const providedToken = req.get('x-bootstrap-token');
 
-      if (process.env.NODE_ENV === 'production' && !expectedToken) {
-        res.status(500).json({
+      // ALWAYS require bootstrap token for dashboard registration (security fix)
+      if (!expectedToken) {
+        res.status(403).json({
           success: false,
-          error: 'Internal Server Error',
-          message: 'ADMIN_BOOTSTRAP_TOKEN is not set',
+          error: 'Forbidden',
+          message: 'Dashboard registration is disabled. Use POST /admin endpoint with super-admin authentication to create users.',
         });
         return;
       }
 
-      if (expectedToken && providedToken !== expectedToken) {
+      if (providedToken !== expectedToken) {
         res.status(401).json({
           success: false,
           error: 'Unauthorized',
@@ -119,6 +119,16 @@ export async function register(req: Request, res: Response): Promise<void> {
           success: false,
           error: 'Bad Request',
           message: 'Username, password, and role are required for dashboard registration',
+        });
+        return;
+      }
+
+      // ONLY allow super-admin registration via bootstrap endpoint
+      if (resolvedRole !== 'super-admin') {
+        res.status(403).json({
+          success: false,
+          error: 'Forbidden',
+          message: 'Only super-admin can be registered via this endpoint. Use POST /admin with super-admin authentication to create other roles.',
         });
         return;
       }

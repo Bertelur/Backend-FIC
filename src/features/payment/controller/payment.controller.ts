@@ -35,8 +35,8 @@ export async function createPayment(req: Request, res: Response): Promise<void> 
 
 export async function getPayment(req: Request, res: Response): Promise<void> {
   try {
-    const externalId = Array.isArray(req.params.externalId) 
-      ? req.params.externalId[0] 
+    const externalId = Array.isArray(req.params.externalId)
+      ? req.params.externalId[0]
       : req.params.externalId;
 
     if (!externalId) {
@@ -170,6 +170,40 @@ export async function webhook(req: Request, res: Response): Promise<void> {
     res.status(500).json({
       error: 'Internal Server Error',
       message: error instanceof Error ? error.message : 'Failed to process webhook',
+    });
+  }
+}
+
+export async function getAllPayments(req: Request, res: Response): Promise<void> {
+  try {
+    const limitParam = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit;
+    const skipParam = Array.isArray(req.query.skip) ? req.query.skip[0] : req.query.skip;
+    const statusParam = Array.isArray(req.query.status) ? req.query.status[0] : req.query.status;
+
+    const limit = limitParam ? parseInt(limitParam as string) : 20;
+    const skip = skipParam ? parseInt(skipParam as string) : 0;
+
+    const validStatuses = ['pending', 'paid', 'expired', 'failed'];
+    const status = statusParam && validStatuses.includes(statusParam as string)
+      ? (statusParam as 'pending' | 'paid' | 'expired' | 'failed')
+      : undefined;
+
+    const result = await paymentService.getAllPayments(limit, skip, status);
+
+    res.status(200).json({
+      success: true,
+      data: result.payments,
+      pagination: {
+        total: result.total,
+        limit: result.limit,
+        skip: result.skip,
+      },
+    });
+  } catch (error) {
+    console.error('Error getting all payments:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Failed to get payments',
     });
   }
 }

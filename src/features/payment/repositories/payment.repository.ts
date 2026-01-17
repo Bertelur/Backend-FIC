@@ -145,6 +145,27 @@ export async function findPaidPaymentsByUserId(
     .toArray();
 }
 
+export async function findAllPayments(
+  limit: number = 20,
+  skip: number = 0,
+  status?: Payment['status'],
+): Promise<{ payments: Payment[]; total: number }> {
+  const db = getDatabase();
+  const collection = db.collection<Payment>(COLLECTION_NAME);
+
+  const filter: any = {};
+  if (status) {
+    filter.status = status;
+  }
+
+  const [payments, total] = await Promise.all([
+    collection.find(filter).sort({ createdAt: -1 }).limit(limit).skip(skip).toArray(),
+    collection.countDocuments(filter),
+  ]);
+
+  return { payments, total };
+}
+
 export async function initializePaymentIndexes(): Promise<void> {
   const db = getDatabase();
   const collection = db.collection<Payment>(COLLECTION_NAME);

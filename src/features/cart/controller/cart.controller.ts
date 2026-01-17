@@ -3,12 +3,40 @@ import { ObjectId } from 'mongodb';
 import * as cartService from '../services/cart.service.js';
 import type { AddCartItemRequest, UpdateCartItemRequest, CheckoutCartRequest } from '../interfaces/cart.types.js';
 
+class UnauthorizedError extends Error {
+  constructor(message: string = 'Unauthorized') {
+    super(message);
+    this.name = 'UnauthorizedError';
+  }
+}
+
 function getBuyerId(req: Request): ObjectId {
-  const userId = (req as any).user?.userId;
+  const user = (req as any).user;
+  if (!user) {
+    throw new UnauthorizedError('Authentication required');
+  }
+  const userId = user.userId;
   if (!userId || !ObjectId.isValid(String(userId))) {
-    throw new Error('Invalid userId');
+    throw new UnauthorizedError('Invalid user token');
   }
   return new ObjectId(String(userId));
+}
+
+function handleError(res: Response, error: unknown, defaultMessage: string): void {
+  if (error instanceof UnauthorizedError) {
+    res.status(401).json({ error: 'Unauthorized', message: error.message });
+    return;
+  }
+  const message = error instanceof Error ? error.message : defaultMessage;
+  const status = message.includes('not found')
+    ? 404
+    : message.includes('Checkout in progress') || message.includes('Insufficient stock') || message.includes('active checkout')
+      ? 409
+      : 400;
+  res.status(status).json({
+    error: status === 404 ? 'Not Found' : status === 409 ? 'Conflict' : 'Bad Request',
+    message,
+  });
 }
 
 export async function getMyCart(req: Request, res: Response): Promise<void> {
@@ -17,7 +45,7 @@ export async function getMyCart(req: Request, res: Response): Promise<void> {
     const cart = await cartService.getMyCart(userId);
     res.status(200).json({ success: true, data: cart });
   } catch (error) {
-    res.status(400).json({ error: 'Bad Request', message: error instanceof Error ? error.message : 'Failed to get cart' });
+    handleError(res, error, 'Failed to get cart');
   }
 }
 
@@ -28,15 +56,7 @@ export async function addCartItem(req: Request, res: Response): Promise<void> {
     const result = await cartService.addItem(userId, (body as any).productId, (body as any).quantity);
     res.status(200).json({ success: true, data: result });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to add item';
-    const status = message.includes('not found')
-      ? 404
-      : message.includes('Checkout in progress') || message.includes('Insufficient stock') || message.includes('active checkout')
-        ? 409
-        : 400;
-    res
-      .status(status)
-      .json({ error: status === 404 ? 'Not Found' : status === 409 ? 'Conflict' : 'Bad Request', message });
+    handleError(res, error, 'Failed to add item');
   }
 }
 
@@ -48,15 +68,7 @@ export async function updateCartItem(req: Request, res: Response): Promise<void>
     const result = await cartService.updateItem(userId, String(productId), (body as any).quantity);
     res.status(200).json({ success: true, data: result });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to update item';
-    const status = message.includes('not found')
-      ? 404
-      : message.includes('Checkout in progress') || message.includes('Insufficient stock') || message.includes('active checkout')
-        ? 409
-        : 400;
-    res
-      .status(status)
-      .json({ error: status === 404 ? 'Not Found' : status === 409 ? 'Conflict' : 'Bad Request', message });
+    handleError(res, error, 'Failed to update item');
   }
 }
 
@@ -67,9 +79,7 @@ export async function removeCartItem(req: Request, res: Response): Promise<void>
     const result = await cartService.removeItem(userId, String(productId));
     res.status(200).json({ success: true, data: result });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to remove item';
-    const status = message.includes('Checkout in progress') || message.includes('active checkout') ? 409 : 400;
-    res.status(status).json({ error: status === 409 ? 'Conflict' : 'Bad Request', message });
+    handleError(res, error, 'Failed to remove item');
   }
 }
 
@@ -79,9 +89,7 @@ export async function clearCart(req: Request, res: Response): Promise<void> {
     const result = await cartService.clearCart(userId);
     res.status(200).json({ success: true, data: result });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to clear cart';
-    const status = message.includes('Checkout in progress') || message.includes('active checkout') ? 409 : 400;
-    res.status(status).json({ error: status === 409 ? 'Conflict' : 'Bad Request', message });
+    handleError(res, error, 'Failed to clear cart');
   }
 }
 
@@ -100,14 +108,6 @@ export async function checkoutCart(req: Request, res: Response): Promise<void> {
     });
     res.status(201).json({ success: true, data: result });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to checkout cart';
-    const status = message.includes('not found')
-      ? 404
-      : message.includes('Checkout in progress') || message.includes('Insufficient stock') || message.includes('active checkout')
-        ? 409
-        : 400;
-    res
-      .status(status)
-      .json({ error: status === 404 ? 'Not Found' : status === 409 ? 'Conflict' : 'Bad Request', message });
+    handleError(res, error, 'Failed to checkout cart');
   }
 }
