@@ -26,7 +26,14 @@ initSentry();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(helmet());
+const helmetMiddleware = (() => {
+  const helmetAny = helmet as unknown as any;
+  return (typeof helmetAny === 'function' ? helmetAny : helmetAny?.default ?? helmetAny?.helmet) as (
+    ...args: any[]
+  ) => any;
+})();
+
+app.use(helmetMiddleware());
 app.use(
   cors({
     origin: process.env.CORS_ORIGIN || true,
