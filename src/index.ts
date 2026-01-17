@@ -67,16 +67,28 @@ app.use((_req: Request, res: Response) => {
   });
 });
 
+let appInitPromise: Promise<void> | null = null;
+
+async function ensureAppReady(): Promise<void> {
+  if (!appInitPromise) {
+    appInitPromise = (async () => {
+      await connectDatabase();
+
+      await initializeDashboardUserIndexes();
+      await initializeBuyerIndexes();
+      await initializePaymentIndexes();
+      await initializeProductIndexes();
+      await initializeInvoiceIndexes();
+      await initializeCartIndexes();
+    })();
+  }
+
+  await appInitPromise;
+}
+
 async function startServer() {
   try {
-    await connectDatabase();
-
-    await initializeDashboardUserIndexes();
-    await initializeBuyerIndexes();
-    await initializePaymentIndexes();
-    await initializeProductIndexes();
-    await initializeInvoiceIndexes();
-    await initializeCartIndexes();
+    await ensureAppReady();
 
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT} in ${process.env.NODE_ENV || 'development'} environment`);
@@ -87,14 +99,26 @@ async function startServer() {
   }
 }
 
-process.on('SIGTERM', async () => {
-  await closeDatabase();
-  process.exit(0);
-});
+export { app, startServer };
 
-process.on('SIGINT', async () => {
-  await closeDatabase();
-  process.exit(0);
-});
+export default async function handler(req: unknown, res: unknown) {
+  await ensureAppReady();
+  return (app as unknown as (req: unknown, res: unknown) => unknown)(req, res);
+}
 
-startServer();
+const isRunningAsScript = Boolean(process.argv[1]) && path.resolve(process.argv[1]) === __filename;
+const isVercel = Boolean(process.env.VERCEL);
+
+if (isRunningAsScript && !isVercel) {
+  process.on('SIGTERM', async () => {
+    await closeDatabase();
+    process.exit(0);
+  });
+
+  process.on('SIGINT', async () => {
+    await closeDatabase();
+    process.exit(0);
+  });
+
+  startServer();
+}
