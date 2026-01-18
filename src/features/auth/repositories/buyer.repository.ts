@@ -61,3 +61,12 @@ export async function countBuyers(): Promise<number> {
   const collection = getBuyerCollection();
   return await collection.countDocuments();
 }
+
+export async function updateBuyerAddress(id: string, address: Buyer['address']): Promise<void> {
+  const collection = getBuyerCollection();
+  const { ObjectId } = await import('mongodb'); // Dynamic import to avoid top-level dependency issues if any
+  await collection.updateOne(
+    { _id: new ObjectId(id) as any }, // Cast to any to avoid type issues with _id string vs ObjectId
+    { $set: { address, updatedAt: new Date() } }
+  );
+}

@@ -10,11 +10,20 @@ export interface DashboardUser {
   updatedAt?: Date;
 }
 
+export interface Address {
+  street: string;
+  city: string;
+  province: string;
+  postalCode: string;
+  phone: string;
+}
+
 export interface Buyer {
   _id?: string;
   email: string;
   username: string;
   password: string;
+  address?: Address;
   createdAt?: Date;
   updatedAt?: Date;
 }

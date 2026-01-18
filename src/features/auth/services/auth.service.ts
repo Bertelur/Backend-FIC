@@ -1,6 +1,6 @@
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../../../utils/jwt.js';
 import { comparePassword, hashPassword } from '../../../utils/password.js';
-import { LoginRequest, RegisterRequest, AuthResponse } from '../interfaces/auth.types.js';
+import { LoginRequest, RegisterRequest, AuthResponse, Address } from '../interfaces/auth.types.js';
 import * as dashboardUserRepo from '../repositories/dashboardUser.repository.js';
 import * as buyerRepo from '../repositories/buyer.repository.js';
 
@@ -283,4 +283,8 @@ export async function refreshTokens(refreshToken: string): Promise<{ accessToken
     accessToken: newAccessToken,
     refreshToken: newRefreshToken,
   };
+}
+
+export async function updateAddress(userId: string, address: Address): Promise<void> {
+  await buyerRepo.updateBuyerAddress(userId, address);
 }

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as authService from '../services/auth.service.js';
-import { LoginRequest, RegisterRequest } from '../interfaces/auth.types.js';
+import { LoginRequest, RegisterRequest, Address } from '../interfaces/auth.types.js';
+import { AuthRequest } from '../../../middleware/auth.js';
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
@@ -242,4 +243,42 @@ export async function logout(_req: Request, res: Response): Promise<void> {
     success: true,
     message: 'Logged out successfully',
   });
+}
+
+export async function updateAddress(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const userId = req.user?.userId;
+    const address: Address = req.body;
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'Unauthorized',
+        message: 'User not authenticated',
+      });
+      return;
+    }
+
+    if (!address.street || !address.city || !address.province || !address.postalCode || !address.phone) {
+      res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'All address fields are required',
+      });
+      return;
+    }
+
+    await authService.updateAddress(userId, address);
+
+    res.status(200).json({
+      success: true,
+      message: 'Address updated successfully',
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Failed to update address',
+    });
+  }
 }
