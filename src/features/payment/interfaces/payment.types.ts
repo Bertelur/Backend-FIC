@@ -1,3 +1,5 @@
+import type { Address } from '../../auth/interfaces/auth.types.js';
+
 export interface CreatePaymentRequest {
   amount: number;
   currency?: string;
@@ -19,6 +21,7 @@ export interface CreatePaymentRequest {
   }>;
   successRedirectUrl?: string;
   failureRedirectUrl?: string;
+  shippingAddress?: Address;
 }
 
 export interface PaymentResponse {

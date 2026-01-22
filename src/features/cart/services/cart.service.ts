@@ -5,6 +5,7 @@ import * as cartRepo from '../repositories/cart.repository.js';
 import * as productRepo from '../../product/repositories/product.repository.js';
 import * as paymentRepo from '../../payment/repositories/payment.repository.js';
 import * as paymentService from '../../payment/services/payment.service.js';
+import * as buyerRepo from '../../auth/repositories/buyer.repository.js';
 import { getDatabase, getMongoClient } from '../../../config/database.js';
 
 function clampQuantity(qty: unknown): number {
@@ -47,7 +48,7 @@ async function cleanupExpiredCheckoutIfNeeded(cart: Cart, userId: ObjectId): Pro
   const legacyCreatedAt = cart.activeCheckoutCreatedAt;
 
   const entries = Array.isArray(cart.activeCheckouts) ? cart.activeCheckouts : [];
-  const merged: Array<{ externalId: string; createdAt?: Date; productIds: string[] }>= [
+  const merged: Array<{ externalId: string; createdAt?: Date; productIds: string[] }> = [
     ...entries.map((e) => ({ externalId: e.externalId, createdAt: e.createdAt, productIds: e.productIds ?? [] })),
     ...(legacyExternalId
       ? [{ externalId: legacyExternalId, createdAt: legacyCreatedAt, productIds: legacyCheckoutIds }]
@@ -98,7 +99,7 @@ async function getPendingReservedProductIds(cart: Cart): Promise<Set<string> | n
   const legacyExternalId = cart.activeCheckoutExternalId;
   const legacyProductIds = Array.isArray(cart.activeCheckoutProductIds) ? cart.activeCheckoutProductIds : [];
 
-  const merged: Array<{ externalId: string; productIds: string[] }>= [
+  const merged: Array<{ externalId: string; productIds: string[] }> = [
     ...entries.map((e) => ({ externalId: e.externalId, productIds: e.productIds ?? [] })),
     ...(legacyExternalId ? [{ externalId: legacyExternalId, productIds: legacyProductIds }] : []),
   ];
@@ -345,6 +346,37 @@ export async function checkoutCart(userId: ObjectId, input: CheckoutCartRequest)
   const amount = lineItems.reduce((sum, li) => sum + li.quantity * li.price, 0);
   if (!Number.isFinite(amount) || amount <= 0) throw new Error('Invalid cart total');
 
+  // Handle shipping address: save to user profile if delivery method and no saved address
+  let shippingAddress = input.shippingAddress;
+  if (input.deliveryMethod === 'delivery' && shippingAddress) {
+    // Merge additionalNotes into shippingAddress if provided separately
+    if (input.additionalNotes) {
+      shippingAddress = {
+        ...shippingAddress,
+        additionalNotes: input.additionalNotes,
+      };
+    }
+
+    // Check if user has a saved address
+    const db = getDatabase();
+    const buyer = await db
+      .collection<{ _id: ObjectId; address?: any }>('buyers')
+      .findOne(
+        { _id: userId },
+        { projection: { address: 1 } as any },
+      );
+
+    // If no saved address exists, save it to user profile
+    if (!buyer?.address) {
+      try {
+        await buyerRepo.updateBuyerAddress(userId.toString(), shippingAddress);
+      } catch (err) {
+        // Log error but don't fail checkout if address save fails
+        console.error('Failed to save address to user profile:', err);
+      }
+    }
+  }
+
   const reservedAt = new Date();
   const externalId = `PAYMENT-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
@@ -403,7 +435,7 @@ export async function checkoutCart(userId: ObjectId, input: CheckoutCartRequest)
         items: lineItems,
       },
       userId,
-      { stockReservedAt: reservedAt, externalId },
+      { stockReservedAt: reservedAt, externalId, shippingAddress: input.deliveryMethod === 'delivery' ? shippingAddress : undefined },
     );
   } catch (err) {
     // If Xendit invoice creation fails, release reserved stock and unlock cart.

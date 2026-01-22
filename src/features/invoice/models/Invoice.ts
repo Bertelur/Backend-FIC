@@ -1,4 +1,5 @@
 import { ObjectId } from 'mongodb';
+import type { Address } from '../../auth/interfaces/auth.types.js';
 
 export interface Invoice {
   _id?: ObjectId;
@@ -17,6 +18,7 @@ export interface Invoice {
     email: string;
     mobileNumber?: string;
   };
+  shippingAddress?: Address;
   items?: Array<{
     productId?: string;
     sku?: string;

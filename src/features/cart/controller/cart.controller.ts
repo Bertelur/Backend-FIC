@@ -105,6 +105,9 @@ export async function checkoutCart(req: Request, res: Response): Promise<void> {
       successRedirectUrl: (body as any).successRedirectUrl,
       failureRedirectUrl: (body as any).failureRedirectUrl,
       forceNew: Boolean((body as any).forceNew),
+      shippingAddress: (body as any).shippingAddress,
+      additionalNotes: (body as any).additionalNotes,
+      deliveryMethod: (body as any).deliveryMethod,
     });
     res.status(201).json({ success: true, data: result });
   } catch (error) {

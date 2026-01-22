@@ -24,6 +24,8 @@ export interface UpdateCartItemRequest {
   quantity: number;
 }
 
+import type { Address } from '../../auth/interfaces/auth.types.js';
+
 export interface CheckoutCartRequest {
   productIds?: string[];
   currency?: string;
@@ -32,4 +34,7 @@ export interface CheckoutCartRequest {
   successRedirectUrl?: string;
   failureRedirectUrl?: string;
   forceNew?: boolean;
+  shippingAddress?: Address;
+  additionalNotes?: string;
+  deliveryMethod?: 'pickup' | 'delivery';
 }

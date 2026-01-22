@@ -8,6 +8,7 @@ import { getDatabase, getMongoClient } from '../../../config/database.js';
 import type { Payment } from '../models/Payment.js';
 import * as productsRepo from '../../product/repositories/product.repository.js';
 import * as cartRepo from '../../cart/repositories/cart.repository.js';
+import type { Address } from '../../auth/interfaces/auth.types.js';
 
 async function releaseReservedStockIfNeeded(payment: Payment): Promise<void> {
   if (!payment.stockReservedAt || payment.stockReleasedAt) return;
@@ -54,7 +55,7 @@ async function releaseReservedStockIfNeeded(payment: Payment): Promise<void> {
 export async function createInvoice(
   paymentData: CreatePaymentRequest,
   userId?: ObjectId,
-  opts?: { stockReservedAt?: Date; externalId?: string },
+  opts?: { stockReservedAt?: Date; externalId?: string; shippingAddress?: Address },
 ): Promise<PaymentResponse> {
   // Generate unique external ID
   const externalId = opts?.externalId || `PAYMENT-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -135,6 +136,7 @@ export async function createInvoice(
     expiryDate: xenditInvoice.expiryDate ? new Date(xenditInvoice.expiryDate) : undefined,
     customer: resolvedCustomer,
     items: paymentData.items,
+    shippingAddress: opts?.shippingAddress || paymentData.shippingAddress,
   });
 
   return {

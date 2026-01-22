@@ -47,6 +47,7 @@ export async function ensureInvoiceForPaidPayment(payment: Payment): Promise<Inv
       invoiceUrl: payment.invoiceUrl,
       customer: payment.customer,
       items: payment.items,
+      shippingAddress: payment.shippingAddress,
     });
     return toResponse(created);
   } catch (error: any) {
@@ -289,11 +290,11 @@ export async function exportInvoicesExcelReport(input?: {
 
     const items = inv.items
       ? inv.items
-          .map((it) => {
-            const unit = Number.isFinite(it.price) ? `@${it.price}` : '';
-            return `${it.name} x${it.quantity}${unit}`;
-          })
-          .join('; ')
+        .map((it) => {
+          const unit = Number.isFinite(it.price) ? `@${it.price}` : '';
+          return `${it.name} x${it.quantity}${unit}`;
+        })
+        .join('; ')
       : '';
 
     ws.addRow({

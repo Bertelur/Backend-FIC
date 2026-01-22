@@ -16,6 +16,10 @@ export interface Address {
   province: string;
   postalCode: string;
   phone: string;
+  additionalNotes?: string;
+  label?: string;
+  lat?: number;
+  lon?: number;
 }
 
 export interface Buyer {
