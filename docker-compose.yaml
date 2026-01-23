@@ -1,0 +1,33 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: backend-fic-mongo
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+  backend-fic:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: backend-fic
+    depends_on:
+      - mongo
+    ports:
+      - '${PORT:-3000}:3000'
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: '${NODE_ENV:-production}'
+      PORT: '${PORT:-3000}'
+      MONGODB_URI: 'mongodb://mongo:27017/backend_fic'
+      SENTRY_DSN: '${SENTRY_DSN}'
+      XENDIT_SECRET_KEY: '${XENDIT_SECRET_KEY}'
+      XENDIT_WEBHOOK_TOKEN: '${XENDIT_WEBHOOK_TOKEN}'
+      ADMIN_BOOTSTRAP_TOKEN: '${ADMIN_BOOTSTRAP_TOKEN}'
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
