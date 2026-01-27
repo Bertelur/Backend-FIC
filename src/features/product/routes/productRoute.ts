@@ -13,7 +13,7 @@ router.get('/:id', productController.getProductDetails);
 router.post(
   '/',
   authenticateToken,
-  requireRole('admin', 'super-admin', 'staff'),
+  requireRole('super-admin', 'staff'),
   uploadProductImage.single('image'),
   productController.createProduct,
 );
@@ -21,7 +21,7 @@ router.post(
 router.put(
   '/:id',
   authenticateToken,
-  requireRole('admin', 'super-admin', 'staff'),
+  requireRole('super-admin', 'staff'),
   uploadProductImage.single('image'),
   productController.editProduct,
 );
@@ -29,7 +29,7 @@ router.put(
 router.delete(
   '/:id',
   authenticateToken,
-  requireRole('admin', 'super-admin'),
+  requireRole('super-admin'),
   productController.deleteProduct,
 );
 

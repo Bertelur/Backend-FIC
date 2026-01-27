@@ -20,6 +20,8 @@ export interface Product {
   stock: number;
   status: ProductStatus;
   image?: ProductImage;
+  unitId: ObjectId; // Reference to 'units' collection
+  isFreeShipping?: boolean; // new flag
   createdAt: Date;
   updatedAt: Date;
 }

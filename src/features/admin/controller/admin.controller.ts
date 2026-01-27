@@ -161,7 +161,7 @@ export async function createUser(req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    const validRoles: UserRole[] = ['super-admin', 'admin', 'staff', 'keuangan'];
+    const validRoles: UserRole[] = ['super-admin', 'staff'];
     if (!validRoles.includes(role)) {
       res.status(400).json({
         error: 'Bad Request',

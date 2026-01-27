@@ -5,6 +5,8 @@ import paymentRouter from '../features/payment/routes/paymentRoute.js';
 import productRouter from '../features/product/routes/productRoute.js';
 import invoiceRouter from '../features/invoice/routes/invoiceRoute.js';
 import cartRouter from '../features/cart/routes/cartRoute.js';
+import orderRouter from '../features/order/routes/orderRoute.js';
+import unitRouter from '../features/unit/routes/unitRoute.js';
 import customersRouter from './customersRoute.js';
 import healthCheckRouter from './healthCheck.js';
 
@@ -20,6 +22,8 @@ const standardRoutes = [
   { path: '/products', router: productRouter },
   { path: '/invoices', router: invoiceRouter },
   { path: '/cart', router: cartRouter },
+  { path: '/orders', router: orderRouter },
+  { path: '/units', router: unitRouter },
 ];
 
 standardRoutes.forEach(({ path, router: routeRouter }) => {

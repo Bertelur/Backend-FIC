@@ -17,13 +17,13 @@ router.get('/my/report', authenticateToken, requireUserType('buyer'), invoiceCon
 router.get('/my/report/export', authenticateToken, requireUserType('buyer'), invoiceController.exportMySalesReportExcel);
 
 // Dashboard: list all invoices (optionally filter by userId)
-router.get('/', authenticateToken, requireRole('admin', 'super-admin', 'keuangan'), invoiceController.getInvoices);
+router.get('/', authenticateToken, requireRole('super-admin', 'staff'), invoiceController.getInvoices);
 
 // Dashboard: overview stats for dashboard cards
 router.get(
   '/overview',
   authenticateToken,
-  requireRole('admin', 'super-admin', 'keuangan'),
+  requireRole('super-admin', 'staff'),
   invoiceController.getInvoicesOverview,
 );
 
@@ -31,7 +31,7 @@ router.get(
 router.get(
   '/report',
   authenticateToken,
-  requireRole('admin', 'super-admin', 'keuangan'),
+  requireRole('super-admin', 'staff'),
   invoiceController.getSalesReport,
 );
 
@@ -39,7 +39,7 @@ router.get(
 router.get(
   '/report/export',
   authenticateToken,
-  requireRole('admin', 'super-admin', 'keuangan'),
+  requireRole('super-admin', 'staff'),
   invoiceController.exportSalesReportExcel,
 );
 
@@ -47,7 +47,7 @@ router.get(
 router.get(
   '/export',
   authenticateToken,
-  requireRole('admin', 'super-admin', 'keuangan'),
+  requireRole('super-admin', 'staff'),
   invoiceController.exportInvoicesExcel,
 );
 
@@ -55,7 +55,7 @@ router.get(
 router.get(
   '/:id',
   authenticateToken,
-  requireRole('admin', 'super-admin', 'keuangan'),
+  requireRole('super-admin', 'staff'),
   invoiceController.getInvoiceDetails,
 );
 

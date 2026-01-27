@@ -9,7 +9,7 @@ const router = Router();
 
 router.use(authenticateToken);
 
-router.get('/', requireRole('admin', 'super-admin'), async (_req: AuthRequest, res: Response) => {
+router.get('/', requireRole('super-admin'), async (_req: AuthRequest, res: Response) => {
   try {
     const customers = await buyerRepo.findAllBuyers();
 

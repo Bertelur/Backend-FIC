@@ -8,7 +8,7 @@ const ACCESS_TOKEN_EXPIRY = 7 * 24 * 60 * 60; // 7 days in seconds
 const REFRESH_TOKEN_EXPIRY = 7 * 24 * 60 * 60; // 7 days in seconds
 
 const VALID_USER_TYPES: UserType[] = ['dashboard', 'buyer'];
-const VALID_USER_ROLES: UserRole[] = ['super-admin', 'admin', 'staff', 'keuangan'];
+const VALID_USER_ROLES: UserRole[] = ['super-admin', 'staff'];
 
 /**
  * Normalize and validate JWT payload structure at runtime.

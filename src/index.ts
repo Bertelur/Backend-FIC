@@ -16,6 +16,8 @@ import { initializePaymentIndexes } from './features/payment/repositories/paymen
 import { initializeProductIndexes } from './features/product/repositories/product.repository.js';
 import { initializeInvoiceIndexes } from './features/invoice/repositories/invoice.repository.js';
 import { initializeCartIndexes } from './features/cart/repositories/cart.repository.js';
+import { createOrderIndexes } from './features/order/models/Order.js';
+import { createUnitIndexes } from './features/unit/models/Unit.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -80,6 +82,8 @@ async function ensureAppReady(): Promise<void> {
       await initializeProductIndexes();
       await initializeInvoiceIndexes();
       await initializeCartIndexes();
+      await createOrderIndexes();
+      await createUnitIndexes();
     })();
   }
 

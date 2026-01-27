@@ -8,9 +8,14 @@ export interface ProductResponse {
   category?: string;
   price: number;
   stock: number;
-  status: ProductStatus;
+  status: 'active' | 'inactive';
   imageUrl?: string;
   imageType?: 'url' | 'file';
+  unit: {
+    id: string;
+    name: string;
+  };
+  isFreeShipping?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -22,8 +27,10 @@ export interface CreateProductRequest {
   category?: string;
   price: number;
   stock: number;
-  status?: ProductStatus;
+  status?: 'active' | 'inactive';
   imageUrl?: string;
+  unitId: string;
+  isFreeShipping?: boolean;
 }
 
 export interface UpdateProductRequest {
@@ -33,8 +40,10 @@ export interface UpdateProductRequest {
   category?: string;
   price?: number;
   stock?: number;
-  status?: ProductStatus;
+  status?: 'active' | 'inactive';
   imageUrl?: string;
+  unitId?: string;
+  isFreeShipping?: boolean;
 }
 
 export interface ListProductsQuery {

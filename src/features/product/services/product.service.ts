@@ -1,8 +1,10 @@
+import { ObjectId } from 'mongodb';
 import type { Product } from '../models/Product.js';
 import type { CreateProductRequest, ListProductsQuery, ProductResponse, UpdateProductRequest } from '../interfaces/product.types.js';
 import * as productRepo from '../repositories/product.repository.js';
 
-function toResponse(product: Product): ProductResponse {
+function toResponse(product: Product, unitName?: string, unitIdOverride?: string): ProductResponse {
+  const finalUnitId = unitIdOverride || (product.unitId ? String(product.unitId) : 'undefined');
   return {
     id: String(product._id),
     name: product.name,
@@ -14,6 +16,11 @@ function toResponse(product: Product): ProductResponse {
     status: product.status,
     imageUrl: product.image?.url,
     imageType: product.image?.type,
+    unit: {
+      id: finalUnitId,
+      name: unitName || 'Unknown Unit', // fallback
+    },
+    isFreeShipping: product.isFreeShipping ?? false,
     createdAt: product.createdAt,
     updatedAt: product.updatedAt,
   };
@@ -28,8 +35,17 @@ export async function listProducts(query: ListProductsQuery): Promise<{ data: Pr
     productRepo.countProducts({ ...query }),
   ]);
 
+  // Collect all unitIds
+  // Ideally use aggregation with $lookup. For now, multiple queries is simpler for this structure.
+  // Or fetch units by IDs (TODO: Add findUnitsByIds to unitRepo, or loop)
+  // Let's loop for now (or optimize later if performance issue)
+  const populated = await Promise.all(products.map(async (p) => {
+    const u = await unitRepo.findUnitById(String(p.unitId));
+    return toResponse(p, u?.name);
+  }));
+
   return {
-    data: products.map(toResponse),
+    data: populated,
     total,
     limit,
     skip,
@@ -38,7 +54,26 @@ export async function listProducts(query: ListProductsQuery): Promise<{ data: Pr
 
 export async function getProductDetails(id: string): Promise<ProductResponse | null> {
   const product = await productRepo.findProductByIdAny(id);
-  return product ? toResponse(product) : null;
+  if (!product) return null;
+
+  let uName = 'Unknown Unit';
+  let uId = String(product.unitId || 'undefined');
+
+  if (product.unitId) {
+    const unit = await unitRepo.findUnitById(String(product.unitId));
+    if (unit) {
+      uName = unit.name;
+      uId = String(unit._id);
+    }
+  } else {
+    const defaultUnit = await unitRepo.findUnitByName('kg');
+    if (defaultUnit) {
+      uName = defaultUnit.name;
+      uId = String(defaultUnit._id);
+    }
+  }
+
+  return toResponse(product, uName, uId);
 }
 
 function isHttpUrl(value: string): boolean {
@@ -57,6 +92,8 @@ export class DuplicateSkuError extends Error {
   }
 }
 
+import * as unitRepo from '../../unit/repositories/unit.repository.js';
+
 function validateStatus(status: unknown): Product['status'] {
   const allowed: Array<Product['status']> = ['active', 'inactive'];
   const resolved = (typeof status === 'string' ? status : 'active') as Product['status'];
@@ -64,6 +101,26 @@ function validateStatus(status: unknown): Product['status'] {
     throw new Error(`Invalid status. Must be one of: ${allowed.join(', ')}`);
   }
   return resolved;
+}
+
+async function validateUnitExists(unitId: string): Promise<ObjectId> {
+  const normalized = unitId.trim();
+  if (!normalized) throw new Error('Unit ID is required');
+
+  const unit = await unitRepo.findUnitById(normalized);
+  if (!unit) {
+    throw new Error(`Unit with ID '${normalized}' does not exist.`);
+  }
+  return new ObjectId(unit._id);
+}
+
+async function getOrCreateDefaultUnit(): Promise<ObjectId> {
+  const defaultName = 'kg';
+  let unit = await unitRepo.findUnitByName(defaultName);
+  if (!unit) {
+    unit = await unitRepo.createUnit(defaultName);
+  }
+  return new ObjectId(unit._id);
 }
 
 export async function createProduct(
@@ -85,6 +142,13 @@ export async function createProduct(
 
   const status = validateStatus(input.status);
 
+  let unitId: ObjectId;
+  if (input.unitId && input.unitId.trim().length > 0) {
+    unitId = await validateUnitExists(input.unitId);
+  } else {
+    unitId = await getOrCreateDefaultUnit();
+  }
+
   const productToCreate: Omit<Product, '_id' | 'createdAt' | 'updatedAt'> = {
     name,
     description: typeof input.description === 'string' ? input.description : undefined,
@@ -93,6 +157,8 @@ export async function createProduct(
     price: input.price,
     stock: input.stock,
     status,
+    unitId,
+    isFreeShipping: input.isFreeShipping ?? false,
   };
 
   if (uploadedFile) {
@@ -113,7 +179,9 @@ export async function createProduct(
 
   try {
     const created = await productRepo.createProduct(productToCreate);
-    return toResponse(created);
+    // Fetch the unit explicitly to ensure name is available
+    const unit = await unitRepo.findUnitById(String(unitId));
+    return toResponse(created, unit?.name, String(unit?._id));
   } catch (error: any) {
     // Mongo duplicate key error
     if (error && (error.code === 11000 || error.codeName === 'DuplicateKey')) {
@@ -140,6 +208,8 @@ export async function editProduct(
   if (typeof update.price === 'number') updateData.price = update.price;
   if (typeof update.stock === 'number') updateData.stock = update.stock;
   if (typeof update.status === 'string') updateData.status = validateStatus(update.status);
+  if (update.unitId) updateData.unitId = await validateUnitExists(update.unitId);
+  if (typeof update.isFreeShipping === 'boolean') updateData.isFreeShipping = update.isFreeShipping;
 
   if (uploadedFile) {
     updateData.image = {
@@ -158,7 +228,11 @@ export async function editProduct(
   }
 
   const updated = await productRepo.updateProductByIdAny(id, updateData);
-  return updated ? toResponse(updated) : null;
+  if (updated) {
+    const unit = await unitRepo.findUnitById(String(updated.unitId));
+    return toResponse(updated, unit?.name, String(unit?._id));
+  }
+  return null;
 }
 
 export async function deleteProduct(id: string): Promise<boolean | null> {

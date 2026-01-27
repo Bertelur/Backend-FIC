@@ -7,7 +7,7 @@ const router = Router();
 
 router.use(authenticateToken);
 
-router.get('/dashboard', requireRole('admin', 'staff', 'keuangan', 'super-admin'), adminController.getDashboard);
+router.get('/dashboard', requireRole('staff', 'super-admin'), adminController.getDashboard);
 router.get('/', requireRole('super-admin'), adminController.getAdmins);
 router.post('/', requireRole('super-admin'), adminController.createUser);
 

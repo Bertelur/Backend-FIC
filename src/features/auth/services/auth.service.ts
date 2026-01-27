@@ -181,6 +181,7 @@ export async function registerBuyer(registerData: RegisterRequest): Promise<Auth
     email: registerData.email,
     username: registerData.username,
     password: hashedPassword,
+    phoneNumber: registerData.phoneNumber,
   });
 
   // Generate tokens
@@ -223,7 +224,7 @@ export async function registerDashboardUser(input: {
     throw new Error('Username already exists');
   }
 
-  const validRoles = ['super-admin', 'admin', 'staff', 'keuangan'] as const;
+  const validRoles = ['super-admin', 'staff'] as const;
   if (!validRoles.includes(input.role as any)) {
     throw new Error(`Invalid role. Must be one of: ${validRoles.join(', ')}`);
   }

@@ -21,11 +21,11 @@ export async function createProduct(req: Request, res: Response): Promise<void> 
 
     const uploadedFile = file
       ? {
-          url: `/uploads/products/${file.filename}`,
-          originalName: file.originalname,
-          mimeType: file.mimetype,
-          size: file.size,
-        }
+        url: `/uploads/products/${file.filename}`,
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+        size: file.size,
+      }
       : undefined;
 
     const payload: CreateProductRequest = {
@@ -37,6 +37,8 @@ export async function createProduct(req: Request, res: Response): Promise<void> 
       stock: parseNumber(body.stock) ?? NaN,
       status: typeof body.status === 'string' ? (body.status as any) : undefined,
       imageUrl: typeof body.imageUrl === 'string' ? body.imageUrl : undefined,
+      unitId: typeof body.unitId === 'string' ? body.unitId : '',
+      isFreeShipping: body.isFreeShipping === 'true' || body.isFreeShipping === true,
     };
 
     const created = await productService.createProduct(payload, uploadedFile);
@@ -55,11 +57,11 @@ export async function createProduct(req: Request, res: Response): Promise<void> 
 
     const status =
       message === 'name is required' ||
-      message === 'sku is required' ||
-      message.startsWith('price is required') ||
-      message.startsWith('stock is required') ||
-      message.startsWith('Invalid imageUrl') ||
-      message.startsWith('Invalid status')
+        message === 'sku is required' ||
+        message.startsWith('price is required') ||
+        message.startsWith('stock is required') ||
+        message.startsWith('Invalid imageUrl') ||
+        message.startsWith('Invalid status')
         ? 400
         : 500;
 
@@ -143,6 +145,8 @@ export async function editProduct(req: Request, res: Response): Promise<void> {
       stock: parseNumber(body.stock),
       status: typeof body.status === 'string' ? (body.status as any) : undefined,
       imageUrl: typeof body.imageUrl === 'string' ? body.imageUrl : undefined,
+      unitId: typeof body.unitId === 'string' ? body.unitId : undefined,
+      isFreeShipping: body.isFreeShipping !== undefined ? (body.isFreeShipping === 'true' || body.isFreeShipping === true) : undefined,
     };
 
     const file = (req as any).file as
@@ -151,11 +155,11 @@ export async function editProduct(req: Request, res: Response): Promise<void> {
 
     const uploadedFile = file
       ? {
-          url: `/uploads/products/${file.filename}`,
-          originalName: file.originalname,
-          mimeType: file.mimetype,
-          size: file.size,
-        }
+        url: `/uploads/products/${file.filename}`,
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+        size: file.size,
+      }
       : undefined;
 
     const updated = await productService.editProduct(id, update, uploadedFile);

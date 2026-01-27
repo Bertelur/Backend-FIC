@@ -5,7 +5,7 @@ import { authenticateToken, requireRole } from '../../../middleware/auth.js';
 const router = Router();
 
 // Dashboard: list all payments (admin, keuangan only)
-router.get('/all', authenticateToken, requireRole('admin', 'super-admin', 'keuangan'), paymentController.getAllPayments);
+router.get('/all', authenticateToken, requireRole('super-admin', 'staff'), paymentController.getAllPayments);
 
 // Create payment/invoice
 router.post('/', authenticateToken, paymentController.createPayment);

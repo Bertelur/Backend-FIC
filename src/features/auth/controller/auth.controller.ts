@@ -59,7 +59,7 @@ export async function register(req: Request, res: Response): Promise<void> {
   try {
     const registerData: RegisterRequest = req.body;
 
-    const roleValues = ['super-admin', 'admin', 'staff', 'keuangan'] as const;
+    const roleValues = ['super-admin', 'staff'] as const;
     const rawType = (req.body as any)?.type;
     const rawRole = (req.body as any)?.role;
     const rawEmail = (req.body as any)?.email;

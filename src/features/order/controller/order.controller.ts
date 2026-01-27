@@ -1,0 +1,113 @@
+import { Response } from 'express';
+import { AuthRequest } from '../../../middleware/auth.js';
+import * as orderService from '../services/order.service.js';
+import { CreateOrderRequest, UpdateOrderStatusRequest } from '../interfaces/order.types.js';
+
+export async function createOrder(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' });
+      return;
+    }
+
+    const payload: CreateOrderRequest = req.body;
+    if (!payload.items || payload.items.length === 0) {
+      res.status(400).json({ error: 'Bad Request', message: 'Items are required' });
+      return;
+    }
+    if (!payload.shippingMethod) {
+      res.status(400).json({ error: 'Bad Request', message: 'Shipping method is required' });
+      return;
+    }
+    if (payload.shippingMethod === 'shipping' && !payload.shippingAddress) {
+      res.status(400).json({ error: 'Bad Request', message: 'Shipping address is required for shipping method' });
+      return;
+    }
+
+    const order = await orderService.createOrder(userId, payload);
+
+    res.status(201).json({ success: true, data: order });
+  } catch (error) {
+    res.status(400).json({
+      error: 'Bad Request',
+      message: error instanceof Error ? error.message : 'Failed to create order',
+    });
+  }
+}
+
+export async function listOrders(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const query: any = { ...req.query };
+
+    // If user is not admin/staff, force userId filter to their own
+    if (req.user?.role !== 'super-admin' && req.user?.role !== 'staff') {
+      query.userId = req.user?.userId;
+    }
+
+    const orders = await orderService.listOrders(query);
+    res.status(200).json({ success: true, data: orders });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Failed to list orders',
+    });
+  }
+}
+
+export async function getOrderById(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const id = String(req.params.id);
+    const order = await orderService.getOrderById(id);
+
+    if (!order) {
+      res.status(404).json({ error: 'Not Found', message: 'Order not found' });
+      return;
+    }
+
+    // Access control
+    if (req.user?.role !== 'super-admin' && req.user?.role !== 'staff') {
+      if (String(order.userId) !== req.user?.userId) {
+        res.status(403).json({ error: 'Forbidden', message: 'You do not have permission to view this order' });
+        return;
+      }
+    }
+
+    res.status(200).json({ success: true, data: order });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Failed to get order',
+    });
+  }
+}
+
+export async function updateOrderStatus(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const id = String(req.params.id);
+    const { status, note } = req.body as UpdateOrderStatusRequest;
+    const userId = req.user?.userId;
+    const role = req.user?.role || (req.user?.type === 'buyer' ? 'buyer' : 'unknown');
+
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    if (!status) {
+      res.status(400).json({ error: 'Bad Request', message: 'Status is required' });
+      return;
+    }
+
+    const updated = await orderService.updateOrderStatus(id, status, userId, role, note);
+    res.status(200).json({ success: true, data: updated });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to update order status';
+    // If it's a validation error (logic), return 400. If 404, return 404.
+    if (message === 'Order not found') {
+      res.status(404).json({ error: 'Not Found', message });
+    } else {
+      res.status(400).json({ error: 'Bad Request', message });
+    }
+  }
+}

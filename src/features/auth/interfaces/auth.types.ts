@@ -1,4 +1,4 @@
-export type UserRole = "super-admin" | "admin" | "staff" | "keuangan";
+export type UserRole = "super-admin" | "staff";
 export type UserType = "dashboard" | "buyer";
 
 export interface DashboardUser {
@@ -27,6 +27,7 @@ export interface Buyer {
   email: string;
   username: string;
   password: string;
+  phoneNumber?: string;
   address?: Address;
   createdAt?: Date;
   updatedAt?: Date;
@@ -53,6 +54,7 @@ export interface RegisterRequest {
   username: string;
   password: string;
   role?: UserRole;
+  phoneNumber?: string;
 }
 
 export interface AuthResponse {
