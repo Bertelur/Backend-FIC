@@ -41,6 +41,10 @@ export interface Order {
   logs: OrderLog[];
   createdAt: Date;
   updatedAt: Date;
+  paymentDeadline?: Date; // Deadline for payment confirmation (createdAt + 2 hours)
+  deliveryConfirmationDeadline?: Date; // Deadline for customer confirmation (shippedAt + 12 hours)
+  paymentConfirmedAt?: Date; // When payment was confirmed
+  shippedAt?: Date; // When order was marked as shipped
 }
 
 export interface CreateOrderRequest {

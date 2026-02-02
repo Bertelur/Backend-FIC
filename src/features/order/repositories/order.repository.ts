@@ -17,12 +17,17 @@ export async function updateOrderStatus(
   id: string,
   status: OrderStatus,
   logEntry: Order['logs'][number],
+  updateFields?: Partial<Order>,
 ): Promise<Order | null> {
   const collection = getOrderCollection();
+  const setFields: any = { status, updatedAt: new Date() };
+  if (updateFields) {
+    Object.assign(setFields, updateFields);
+  }
   const result = await collection.findOneAndUpdate(
     { _id: new ObjectId(id) },
     {
-      $set: { status, updatedAt: new Date() },
+      $set: setFields,
       $push: { logs: logEntry } as any,
     },
     { returnDocument: 'after' }
@@ -54,4 +59,26 @@ export async function countOrders(query: ListOrdersQuery): Promise<number> {
   if (query.userId) filter.userId = new ObjectId(query.userId);
 
   return await collection.countDocuments(filter);
+}
+
+export async function findPendingOrdersPastPaymentDeadline(): Promise<Order[]> {
+  const collection = getOrderCollection();
+  const now = new Date();
+  return await collection
+    .find({
+      status: 'pending',
+      paymentDeadline: { $exists: true, $lt: now },
+    })
+    .toArray();
+}
+
+export async function findShippedOrdersPastDeliveryDeadline(): Promise<Order[]> {
+  const collection = getOrderCollection();
+  const now = new Date();
+  return await collection
+    .find({
+      status: 'shipped',
+      deliveryConfirmationDeadline: { $exists: true, $lt: now },
+    })
+    .toArray();
 }

@@ -26,8 +26,9 @@ export async function createOrder(req: AuthRequest, res: Response): Promise<void
     }
 
     const order = await orderService.createOrder(userId, payload);
+    const { _id, ...rest } = order as any;
 
-    res.status(201).json({ success: true, data: order });
+    res.status(201).json({ success: true, data: { id: String(_id), ...rest } });
   } catch (error) {
     res.status(400).json({
       error: 'Bad Request',
@@ -46,7 +47,11 @@ export async function listOrders(req: AuthRequest, res: Response): Promise<void>
     }
 
     const orders = await orderService.listOrders(query);
-    res.status(200).json({ success: true, data: orders });
+    const apiOrders = (orders as any[]).map(({ _id, ...rest }) => ({
+      id: String(_id),
+      ...rest,
+    }));
+    res.status(200).json({ success: true, data: apiOrders });
   } catch (error) {
     res.status(500).json({
       error: 'Internal Server Error',
@@ -73,7 +78,8 @@ export async function getOrderById(req: AuthRequest, res: Response): Promise<voi
       }
     }
 
-    res.status(200).json({ success: true, data: order });
+    const { _id, ...rest } = order as any;
+    res.status(200).json({ success: true, data: { id: String(_id), ...rest } });
   } catch (error) {
     res.status(500).json({
       error: 'Internal Server Error',
@@ -100,7 +106,8 @@ export async function updateOrderStatus(req: AuthRequest, res: Response): Promis
     }
 
     const updated = await orderService.updateOrderStatus(id, status, userId, role, note);
-    res.status(200).json({ success: true, data: updated });
+    const { _id, ...rest } = updated as any;
+    res.status(200).json({ success: true, data: { id: String(_id), ...rest } });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to update order status';
     // If it's a validation error (logic), return 400. If 404, return 404.

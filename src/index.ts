@@ -18,6 +18,8 @@ import { initializeInvoiceIndexes } from './features/invoice/repositories/invoic
 import { initializeCartIndexes } from './features/cart/repositories/cart.repository.js';
 import { createOrderIndexes } from './features/order/models/Order.js';
 import { createUnitIndexes } from './features/unit/models/Unit.js';
+import { processAutoCancelOrders } from './features/order/jobs/orderAutoCancel.job.js';
+import { processAutoCompleteOrders } from './features/order/jobs/orderAutoComplete.job.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -90,12 +92,32 @@ async function ensureAppReady(): Promise<void> {
   await appInitPromise;
 }
 
+function startOrderJobs(): void {
+  // Run jobs every 5 minutes (300000 ms)
+  const JOB_INTERVAL_MS = 5 * 60 * 1000;
+
+  // Initial run after 1 minute
+  setTimeout(() => {
+    processAutoCancelOrders().catch(console.error);
+    processAutoCompleteOrders().catch(console.error);
+  }, 60 * 1000);
+
+  // Then run every 5 minutes
+  setInterval(() => {
+    processAutoCancelOrders().catch(console.error);
+    processAutoCompleteOrders().catch(console.error);
+  }, JOB_INTERVAL_MS);
+
+  console.log('Order auto-cancel and auto-complete jobs scheduled (every 5 minutes)');
+}
+
 async function startServer() {
   try {
     await ensureAppReady();
 
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT} in ${process.env.NODE_ENV || 'development'} environment`);
+      startOrderJobs();
     });
   } catch (error) {
     console.error('Failed to start server:', error instanceof Error ? error.message : 'Unknown error');

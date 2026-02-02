@@ -49,6 +49,7 @@ export async function createOrder(
   }
 
   const now = new Date();
+  const paymentDeadline = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2 hours from creation
   const initialLog: OrderLog = {
     status: 'pending',
     timestamp: now,
@@ -66,6 +67,7 @@ export async function createOrder(
     logs: [initialLog],
     createdAt: now,
     updatedAt: now,
+    paymentDeadline,
   };
 
   return await orderRepo.createOrder(newOrder);
@@ -100,6 +102,13 @@ export async function updateOrderStatus(
 
   // Permission Checks & Transitions
   let valid = false;
+
+  // Check if payment deadline has passed for pending -> processing transition
+  if (currentStatus === 'pending' && newStatus === 'processing') {
+    if (order.paymentDeadline && order.paymentDeadline < new Date()) {
+      throw new Error('Payment deadline has expired. Order should be auto-cancelled.');
+    }
+  }
 
   if (role === 'buyer') {
     // Buyer can only mark 'delivered' (verification)
@@ -137,7 +146,18 @@ export async function updateOrderStatus(
     by: userId,
   };
 
-  const updated = await orderRepo.updateOrderStatus(orderId, newStatus, logEntry);
+  // Set timestamps based on status transitions
+  const updateFields: Partial<Order> = {};
+  if (currentStatus === 'pending' && newStatus === 'processing') {
+    updateFields.paymentConfirmedAt = new Date();
+  }
+  if (currentStatus === 'processing' && newStatus === 'shipped') {
+    const now = new Date();
+    updateFields.shippedAt = now;
+    updateFields.deliveryConfirmationDeadline = new Date(now.getTime() + 12 * 60 * 60 * 1000); // 12 hours from shipped
+  }
+
+  const updated = await orderRepo.updateOrderStatus(orderId, newStatus, logEntry, updateFields);
   if (!updated) throw new Error('Failed to update order status');
 
   return updated;
