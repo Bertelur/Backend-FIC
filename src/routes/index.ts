@@ -9,6 +9,7 @@ import orderRouter from '../features/order/routes/orderRoute.js';
 import unitRouter from '../features/unit/routes/unitRoute.js';
 import customersRouter from './customersRoute.js';
 import healthCheckRouter from './healthCheck.js';
+import suratJalanRouter from './suratJalanRoute.js';
 
 const router = express.Router();
 
@@ -24,6 +25,7 @@ const standardRoutes = [
   { path: '/cart', router: cartRouter },
   { path: '/orders', router: orderRouter },
   { path: '/units', router: unitRouter },
+  { path: '/surat-jalan', router: suratJalanRouter },
 ];
 
 standardRoutes.forEach(({ path, router: routeRouter }) => {

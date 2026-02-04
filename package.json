@@ -3,6 +3,7 @@
     "@sentry/node": "^10.33.0",
     "@types/bcrypt": "^6.0.0",
     "@types/cookie-parser": "^1.4.10",
+    "@types/puppeteer": "^5.4.7",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.9.0",
     "cookie-parser": "^1.4.7",
@@ -15,6 +16,7 @@
     "mongodb": "^7.0.0",
     "morgan": "^1.10.1",
     "multer": "^2.0.0",
+    "puppeteer": "^24.36.1",
     "xendit-node": "^7.0.0"
   },
   "name": "backend-fic",
