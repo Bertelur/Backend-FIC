@@ -1,32 +1,7 @@
-import fs from 'fs';
-import path from 'path';
 import multer from 'multer';
 
-const uploadsRoot = path.resolve(process.cwd(), 'uploads');
-const productsDir = path.join(uploadsRoot, 'products');
-
-function ensureDirs() {
-  if (!fs.existsSync(productsDir)) {
-    fs.mkdirSync(productsDir, { recursive: true });
-  }
-}
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    try {
-      ensureDirs();
-      cb(null, productsDir);
-    } catch (e) {
-      cb(e as Error, productsDir);
-    }
-  },
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname || '').toLowerCase();
-    const safeExt = ext && ext.length <= 10 ? ext : '';
-    const unique = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    cb(null, `${unique}${safeExt}`);
-  },
-});
+// Use memory storage so file buffer is available for Cloudinary upload
+const storage = multer.memoryStorage();
 
 function fileFilter(_req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) {
   const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
@@ -41,6 +16,6 @@ export const uploadProductImage = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024,
+    fileSize: 5 * 1024 * 1024, // 5MB
   },
 });

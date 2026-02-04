@@ -3,11 +3,12 @@ import { ObjectId } from 'mongodb';
 export type ProductStatus = 'active' | 'inactive';
 
 export interface ProductImage {
-  type: 'url' | 'file';
+  type: 'url' | 'file' | 'cloudinary';
   url: string;
   originalName?: string;
   mimeType?: string;
   size?: number;
+  cloudinaryPublicId?: string;
 }
 
 export interface Product {

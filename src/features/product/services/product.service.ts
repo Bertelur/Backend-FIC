@@ -125,7 +125,7 @@ async function getOrCreateDefaultUnit(): Promise<ObjectId> {
 
 export async function createProduct(
   input: CreateProductRequest,
-  uploadedFile?: { url: string; originalName?: string; mimeType?: string; size?: number },
+  uploadedFile?: { url: string; originalName?: string; mimeType?: string; size?: number; cloudinaryPublicId?: string },
 ): Promise<ProductResponse> {
   const name = typeof input.name === 'string' ? input.name.trim() : '';
   const sku = typeof input.sku === 'string' ? input.sku.trim() : '';
@@ -163,11 +163,12 @@ export async function createProduct(
 
   if (uploadedFile) {
     productToCreate.image = {
-      type: 'file',
+      type: uploadedFile.cloudinaryPublicId ? 'cloudinary' : 'file',
       url: uploadedFile.url,
       originalName: uploadedFile.originalName,
       mimeType: uploadedFile.mimeType,
       size: uploadedFile.size,
+      cloudinaryPublicId: uploadedFile.cloudinaryPublicId,
     };
   } else if (typeof input.imageUrl === 'string' && input.imageUrl.trim().length > 0) {
     const imageUrl = input.imageUrl.trim();
@@ -194,7 +195,7 @@ export async function createProduct(
 export async function editProduct(
   id: string,
   update: UpdateProductRequest,
-  uploadedFile?: { url: string; originalName?: string; mimeType?: string; size?: number },
+  uploadedFile?: { url: string; originalName?: string; mimeType?: string; size?: number; cloudinaryPublicId?: string },
 ): Promise<ProductResponse | null> {
   // allow both ObjectId and legacy string ids
 
@@ -213,11 +214,12 @@ export async function editProduct(
 
   if (uploadedFile) {
     updateData.image = {
-      type: 'file',
+      type: uploadedFile.cloudinaryPublicId ? 'cloudinary' : 'file',
       url: uploadedFile.url,
       originalName: uploadedFile.originalName,
       mimeType: uploadedFile.mimeType,
       size: uploadedFile.size,
+      cloudinaryPublicId: uploadedFile.cloudinaryPublicId,
     };
   } else if (typeof update.imageUrl === 'string' && update.imageUrl.trim().length > 0) {
     const imageUrl = update.imageUrl.trim();

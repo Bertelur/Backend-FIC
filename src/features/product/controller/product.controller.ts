@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as productService from '../services/product.service.js';
 import type { CreateProductRequest, ListProductsQuery, UpdateProductRequest } from '../interfaces/product.types.js';
+import { uploadImage } from '../../../utils/cloudinary.js';
 
 function parseNumber(value: unknown): number | undefined {
   if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
@@ -15,18 +16,38 @@ export async function createProduct(req: Request, res: Response): Promise<void> 
   try {
     const body: any = req.body ?? {};
 
+    // Handle file upload to Cloudinary
     const file = (req as any).file as
-      | { filename: string; originalname: string; mimetype: string; size: number }
+      | { buffer: Buffer; originalname: string; mimetype: string; size: number }
       | undefined;
 
-    const uploadedFile = file
-      ? {
-        url: `/uploads/products/${file.filename}`,
-        originalName: file.originalname,
-        mimeType: file.mimetype,
-        size: file.size,
+    let uploadedFile: {
+      url: string;
+      originalName: string;
+      mimeType: string;
+      size: number;
+      cloudinaryPublicId?: string;
+    } | undefined;
+
+    if (file) {
+      try {
+        const cloudinaryResult = await uploadImage(file.buffer, { folder: 'products' });
+        uploadedFile = {
+          url: cloudinaryResult.secureUrl,
+          originalName: file.originalname,
+          mimeType: file.mimetype,
+          size: file.size,
+          cloudinaryPublicId: cloudinaryResult.publicId,
+        };
+      } catch (uploadError) {
+        console.error('Cloudinary upload failed:', uploadError);
+        res.status(500).json({
+          error: 'Internal Server Error',
+          message: 'Failed to upload image',
+        });
+        return;
       }
-      : undefined;
+    }
 
     const payload: CreateProductRequest = {
       name: typeof body.name === 'string' ? body.name : '',
@@ -149,18 +170,38 @@ export async function editProduct(req: Request, res: Response): Promise<void> {
       isFreeShipping: body.isFreeShipping !== undefined ? (body.isFreeShipping === 'true' || body.isFreeShipping === true) : undefined,
     };
 
+    // Handle file upload to Cloudinary
     const file = (req as any).file as
-      | { filename: string; originalname: string; mimetype: string; size: number }
+      | { buffer: Buffer; originalname: string; mimetype: string; size: number }
       | undefined;
 
-    const uploadedFile = file
-      ? {
-        url: `/uploads/products/${file.filename}`,
-        originalName: file.originalname,
-        mimeType: file.mimetype,
-        size: file.size,
+    let uploadedFile: {
+      url: string;
+      originalName: string;
+      mimeType: string;
+      size: number;
+      cloudinaryPublicId?: string;
+    } | undefined;
+
+    if (file) {
+      try {
+        const cloudinaryResult = await uploadImage(file.buffer, { folder: 'products' });
+        uploadedFile = {
+          url: cloudinaryResult.secureUrl,
+          originalName: file.originalname,
+          mimeType: file.mimetype,
+          size: file.size,
+          cloudinaryPublicId: cloudinaryResult.publicId,
+        };
+      } catch (uploadError) {
+        console.error('Cloudinary upload failed:', uploadError);
+        res.status(500).json({
+          error: 'Internal Server Error',
+          message: 'Failed to upload image',
+        });
+        return;
       }
-      : undefined;
+    }
 
     const updated = await productService.editProduct(id, update, uploadedFile);
     if (!updated) {

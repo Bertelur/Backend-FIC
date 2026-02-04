@@ -10,7 +10,7 @@ export interface ProductResponse {
   stock: number;
   status: 'active' | 'inactive';
   imageUrl?: string;
-  imageType?: 'url' | 'file';
+  imageType?: 'url' | 'file' | 'cloudinary';
   unit: {
     id: string;
     name: string;
