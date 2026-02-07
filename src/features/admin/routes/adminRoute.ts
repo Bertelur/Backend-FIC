@@ -10,5 +10,7 @@ router.use(authenticateToken);
 router.get('/dashboard', requireRole('staff', 'super-admin'), adminController.getDashboard);
 router.get('/', requireRole('super-admin'), adminController.getAdmins);
 router.post('/', requireRole('super-admin'), adminController.createUser);
+router.patch('/:id', requireRole('super-admin'), adminController.updateUserRole);
+router.delete('/:id', requireRole('super-admin'), adminController.deleteUser);
 
 export default router;

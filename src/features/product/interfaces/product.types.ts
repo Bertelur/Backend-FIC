@@ -50,6 +50,7 @@ export interface ListProductsQuery {
   q?: string;
   category?: string;
   status?: ProductStatus;
+  unitId?: string;
   limit?: number;
   skip?: number;
 }

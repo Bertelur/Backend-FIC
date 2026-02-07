@@ -241,3 +241,10 @@ export async function deleteProduct(id: string): Promise<boolean | null> {
   // allow both ObjectId and legacy string ids
   return await productRepo.deleteProductByIdAny(id);
 }
+
+export async function bulkUpdateCategory(
+  oldCategory: string,
+  newCategory: string,
+): Promise<{ matchedCount: number; modifiedCount: number }> {
+  return await productRepo.bulkUpdateCategory(oldCategory, newCategory);
+}

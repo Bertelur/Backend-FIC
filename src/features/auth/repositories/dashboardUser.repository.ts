@@ -1,5 +1,11 @@
+import { ObjectId } from 'mongodb';
 import { getDashboardUserCollection, createDashboardUserIndexes } from '../models/DashboardUser.js';
 import { DashboardUser } from '../interfaces/auth.types.js';
+
+function toIdFilter(id: string): { _id: ObjectId } | { _id: string } {
+  if (ObjectId.isValid(id)) return { _id: new ObjectId(id) };
+  return { _id: id };
+}
 
 export async function initializeDashboardUserIndexes(): Promise<void> {
   await createDashboardUserIndexes();
@@ -37,7 +43,24 @@ export async function findDashboardUserByUsername(username: string): Promise<Das
 
 export async function findDashboardUserById(id: string): Promise<DashboardUser | null> {
   const collection = getDashboardUserCollection();
-  return await collection.findOne({ _id: id });
+  return await collection.findOne(toIdFilter(id) as any);
+}
+
+export async function updateDashboardUserRole(id: string, role: DashboardUser['role']): Promise<DashboardUser | null> {
+  const collection = getDashboardUserCollection();
+  const now = new Date();
+  const result = await collection.findOneAndUpdate(
+    toIdFilter(id) as any,
+    { $set: { role, updatedAt: now } },
+    { returnDocument: 'after' },
+  );
+  return result;
+}
+
+export async function deleteDashboardUserById(id: string): Promise<boolean> {
+  const collection = getDashboardUserCollection();
+  const result = await collection.deleteOne(toIdFilter(id) as any);
+  return result.deletedCount === 1;
 }
 
 export async function findAllDashboardUsers(): Promise<DashboardUser[]> {

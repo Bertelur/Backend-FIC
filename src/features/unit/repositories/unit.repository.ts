@@ -33,6 +33,17 @@ export async function findUnitByName(name: string): Promise<Unit | null> {
   return await collection.findOne({ name });
 }
 
+export async function updateUnitById(id: string, name: string): Promise<Unit | null> {
+  const collection = getUnitCollection();
+  const now = new Date();
+  const result = await collection.findOneAndUpdate(
+    { _id: new ObjectId(id) },
+    { $set: { name: name.trim(), updatedAt: now } },
+    { returnDocument: 'after' },
+  );
+  return result;
+}
+
 export async function deleteUnitById(id: string): Promise<boolean> {
   const collection = getUnitCollection();
   const result = await collection.deleteOne({ _id: new ObjectId(id) });

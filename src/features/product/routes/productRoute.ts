@@ -9,6 +9,14 @@ const router = Router();
 router.get('/', productController.getProducts);
 router.get('/:id', productController.getProductDetails);
 
+// Admin: bulk category update (must be before /:id for PATCH)
+router.patch(
+  '/bulk-category',
+  authenticateToken,
+  requireRole('super-admin', 'staff'),
+  productController.bulkUpdateCategory,
+);
+
 // Admin endpoints
 router.post(
   '/',

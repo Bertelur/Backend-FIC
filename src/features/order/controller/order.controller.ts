@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../../../middleware/auth.js';
 import * as orderService from '../services/order.service.js';
+import * as buyerRepo from '../../auth/repositories/buyer.repository.js';
 import { CreateOrderRequest, UpdateOrderStatusRequest } from '../interfaces/order.types.js';
 
 export async function createOrder(req: AuthRequest, res: Response): Promise<void> {
@@ -47,10 +48,27 @@ export async function listOrders(req: AuthRequest, res: Response): Promise<void>
     }
 
     const orders = await orderService.listOrders(query);
-    const apiOrders = (orders as any[]).map(({ _id, ...rest }) => ({
-      id: String(_id),
-      ...rest,
-    }));
+    const userIds = Array.from(new Set((orders as any[]).map((o) => String(o.userId)).filter(Boolean)));
+    const buyerMap = new Map<string, { username?: string; email?: string }>();
+    await Promise.all(
+      userIds.map(async (uid) => {
+        const buyer = await buyerRepo.findBuyerById(uid);
+        if (buyer) buyerMap.set(uid, { username: buyer.username, email: buyer.email });
+      }),
+    );
+    const apiOrders = (orders as any[]).map(({ _id, userId, ...rest }) => {
+      const uid = String(userId);
+      const buyer = buyerMap.get(uid);
+      const customerName = buyer?.username || buyer?.email || undefined;
+      const customerEmail = buyer?.email;
+      return {
+        id: String(_id),
+        userId: uid,
+        ...rest,
+        ...(customerName && { customerName }),
+        ...(customerEmail && { customerEmail }),
+      };
+    });
     res.status(200).json({ success: true, data: apiOrders });
   } catch (error) {
     res.status(500).json({

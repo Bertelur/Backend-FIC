@@ -122,6 +122,8 @@ export async function updateOrderStatus(
 
     if (order.shippingMethod === 'shipping') {
       if (currentStatus === 'processing' && newStatus === 'shipped') valid = true;
+      // Staff/admin can mark as delivered (e.g. when confirming delivery from dashboard).
+      if (currentStatus === 'shipped' && newStatus === 'delivered') valid = true;
       // Admin can force complete? Typically 'delivered' -> 'completed'.
       if (currentStatus === 'delivered' && newStatus === 'completed') valid = true;
       // Admin cancelling during processing

@@ -25,6 +25,13 @@ export async function findProducts(query: ListProductsQuery): Promise<Product[]>
   const filter: any = {};
   if (query.category) filter.category = query.category;
   if (query.status) filter.status = query.status;
+  if (query.unitId) {
+    try {
+      filter.unitId = new ObjectId(query.unitId);
+    } catch {
+      filter.unitId = query.unitId;
+    }
+  }
 
   if (query.q) {
     const q = query.q.trim();
@@ -102,6 +109,13 @@ export async function countProducts(query: ListProductsQuery): Promise<number> {
   const filter: any = {};
   if (query.category) filter.category = query.category;
   if (query.status) filter.status = query.status;
+  if (query.unitId) {
+    try {
+      filter.unitId = new ObjectId(query.unitId);
+    } catch {
+      filter.unitId = query.unitId;
+    }
+  }
 
   if (query.q) {
     const q = query.q.trim();
@@ -305,4 +319,17 @@ export async function findProductsByIdsAny(ids: string[]): Promise<Product[]> {
   }
 
   return await collection.find({ $or: orFilters }).toArray();
+}
+
+export async function bulkUpdateCategory(
+  oldCategory: string,
+  newCategory: string,
+): Promise<{ matchedCount: number; modifiedCount: number }> {
+  const collection = getCollection();
+  const now = new Date();
+  const result = await collection.updateMany(
+    { category: oldCategory },
+    { $set: { category: newCategory, updatedAt: now } },
+  );
+  return { matchedCount: result.matchedCount, modifiedCount: result.modifiedCount };
 }

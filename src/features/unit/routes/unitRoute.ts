@@ -15,12 +15,20 @@ router.post(
   unitController.createUnit
 );
 
+// Admin: Update unit (rename)
+router.patch(
+  '/:id',
+  authenticateToken,
+  requireRole('super-admin', 'staff'),
+  unitController.updateUnit,
+);
+
 // Super-Admin: Delete unit
 router.delete(
   '/:id',
   authenticateToken,
   requireRole('super-admin'),
-  unitController.deleteUnit
+  unitController.deleteUnit,
 );
 
 export default router;

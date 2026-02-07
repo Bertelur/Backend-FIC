@@ -49,7 +49,12 @@ export async function findBuyerByEmailOrUsername(emailOrUsername: string): Promi
 
 export async function findBuyerById(id: string): Promise<Buyer | null> {
   const collection = getBuyerCollection();
-  return await collection.findOne({ _id: id });
+  const { ObjectId } = await import('mongodb');
+  if (ObjectId.isValid(id)) {
+    const byOid = await collection.findOne({ _id: new ObjectId(id) } as any);
+    if (byOid) return byOid;
+  }
+  return await collection.findOne({ _id: id } as any);
 }
 
 export async function findAllBuyers(): Promise<Buyer[]> {

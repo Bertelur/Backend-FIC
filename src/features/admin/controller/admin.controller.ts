@@ -127,18 +127,25 @@ export async function getDashboard(req: AuthRequest, res: Response): Promise<voi
   }
 }
 
+function toAdminResponse(admin: any): { id: string; username: string; role: string; createdAt?: Date; updatedAt?: Date } {
+  return {
+    id: String(admin._id),
+    username: admin.username,
+    role: admin.role,
+    createdAt: admin.createdAt,
+    updatedAt: admin.updatedAt,
+  };
+}
+
 export async function getAdmins(_req: AuthRequest, res: Response): Promise<void> {
   try {
     const admins = await dashboardUserRepo.findAllDashboardUsers();
-    const adminsWithoutPassword = admins.map(({ password, ...admin }) => ({
-      ...admin,
-      password: undefined,
-    }));
+    const list = admins.map(({ password: _, ...admin }) => toAdminResponse(admin));
 
     res.status(200).json({
       message: 'Admin users list',
-      admins: adminsWithoutPassword,
-      count: admins.length,
+      admins: list,
+      count: list.length,
     });
   } catch (error) {
     res.status(500).json({
@@ -196,16 +203,89 @@ export async function createUser(req: AuthRequest, res: Response): Promise<void>
       role: role as UserRole,
     });
 
-    const { password: _, ...userWithoutPassword } = newUser;
+    const { password: _ } = newUser;
 
     res.status(201).json({
       message: 'Admin user created successfully',
-      user: userWithoutPassword,
+      user: toAdminResponse(newUser),
     });
   } catch (error) {
     res.status(500).json({
       error: 'Internal Server Error',
       message: error instanceof Error ? error.message : 'Failed to create admin user',
+    });
+  }
+}
+
+export async function updateUserRole(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const currentUserRole = req.user?.role;
+    if (currentUserRole !== 'super-admin') {
+      res.status(403).json({
+        error: 'Forbidden',
+        message: 'Only super-admin can update user roles',
+      });
+      return;
+    }
+
+    const id = String(req.params.id);
+    const { role } = req.body as { role?: string };
+    if (!role || !['super-admin', 'staff'].includes(role)) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'role must be one of: super-admin, staff',
+      });
+      return;
+    }
+
+    const updated = await dashboardUserRepo.updateDashboardUserRole(id, role as UserRole);
+    if (!updated) {
+      res.status(404).json({ error: 'Not Found', message: 'User not found' });
+      return;
+    }
+    res.status(200).json({
+      message: 'Role updated',
+      user: toAdminResponse(updated),
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Failed to update role',
+    });
+  }
+}
+
+export async function deleteUser(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const currentUserId = req.user?.userId;
+    const currentUserRole = req.user?.role;
+    if (currentUserRole !== 'super-admin') {
+      res.status(403).json({
+        error: 'Forbidden',
+        message: 'Only super-admin can delete users',
+      });
+      return;
+    }
+
+    const id = String(req.params.id);
+    if (currentUserId && String(currentUserId) === id) {
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'Cannot delete your own account',
+      });
+      return;
+    }
+
+    const deleted = await dashboardUserRepo.deleteDashboardUserById(id);
+    if (!deleted) {
+      res.status(404).json({ error: 'Not Found', message: 'User not found' });
+      return;
+    }
+    res.status(200).json({ success: true, message: 'User deleted' });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Failed to delete user',
     });
   }
 }

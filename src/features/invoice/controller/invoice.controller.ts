@@ -11,14 +11,29 @@ function parseNumber(value: unknown): number | undefined {
   return undefined;
 }
 
+function getQueryString(value: unknown): string | undefined {
+  const v = Array.isArray(value) ? value[0] : value;
+  return typeof v === 'string' ? v : undefined;
+}
+
 export async function getInvoices(req: Request, res: Response): Promise<void> {
   try {
-    const userId = Array.isArray(req.query.userId) ? req.query.userId[0] : req.query.userId;
+    const userId = getQueryString(req.query.userId);
+    const search = getQueryString(req.query.search);
+    const status = getQueryString(req.query.status);
+    const paymentMethod = getQueryString(req.query.paymentMethod);
+    const from = getQueryString(req.query.from);
+    const to = getQueryString(req.query.to);
     const limit = parseNumber(Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit);
     const skip = parseNumber(Array.isArray(req.query.skip) ? req.query.skip[0] : req.query.skip);
 
     const result = await invoiceService.listInvoicesForDashboard({
-      userId: typeof userId === 'string' ? userId : undefined,
+      userId: userId || undefined,
+      search: search || undefined,
+      status: status || undefined,
+      paymentMethod: paymentMethod || undefined,
+      from: from || undefined,
+      to: to || undefined,
       limit,
       skip,
     } satisfies ListInvoicesQuery);

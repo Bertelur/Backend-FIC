@@ -40,14 +40,43 @@ export async function findInvoiceByPaymentExternalId(paymentExternalId: string):
   return await collection.findOne({ paymentExternalId });
 }
 
+export interface ListInvoicesFilter {
+  userId?: ObjectId;
+  search?: string;
+  status?: string;
+  paymentMethod?: string;
+  from?: Date;
+  to?: Date;
+}
+
+function buildListInvoicesFilter(filter: ListInvoicesFilter): any {
+  const q: any = {};
+  if (filter.userId) q.userId = filter.userId;
+  if (filter.status) q.status = filter.status;
+  if (filter.paymentMethod) q.paymentMethod = filter.paymentMethod;
+  if (filter.search && filter.search.trim()) {
+    const s = filter.search.trim();
+    q.$or = [
+      { paymentExternalId: { $regex: s, $options: 'i' } },
+      { 'customer.email': { $regex: s, $options: 'i' } },
+      { xenditInvoiceId: { $regex: s, $options: 'i' } },
+    ];
+  }
+  if (filter.from || filter.to) {
+    q.createdAt = {};
+    if (filter.from) q.createdAt.$gte = filter.from;
+    if (filter.to) q.createdAt.$lte = filter.to;
+  }
+  return q;
+}
+
 export async function listInvoices(
-  filter: { userId?: ObjectId },
+  filter: ListInvoicesFilter,
   limit: number,
   skip: number,
 ): Promise<Invoice[]> {
   const collection = getCollection();
-  const q: any = {};
-  if (filter.userId) q.userId = filter.userId;
+  const q = buildListInvoicesFilter(filter);
   return await collection.find(q).sort({ createdAt: -1 }).skip(skip).limit(limit).toArray();
 }
 
@@ -73,10 +102,9 @@ export async function listInvoicesForExport(filter: {
     .toArray();
 }
 
-export async function countInvoices(filter: { userId?: ObjectId }): Promise<number> {
+export async function countInvoices(filter: ListInvoicesFilter): Promise<number> {
   const collection = getCollection();
-  const q: any = {};
-  if (filter.userId) q.userId = filter.userId;
+  const q = buildListInvoicesFilter(filter);
   return await collection.countDocuments(q);
 }
 

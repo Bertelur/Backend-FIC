@@ -98,6 +98,7 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
     const q = Array.isArray(req.query.q) ? req.query.q[0] : req.query.q;
     const category = Array.isArray(req.query.category) ? req.query.category[0] : req.query.category;
     const status = Array.isArray(req.query.status) ? req.query.status[0] : req.query.status;
+    const unitId = Array.isArray(req.query.unitId) ? req.query.unitId[0] : req.query.unitId;
 
     const limit = parseNumber(Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit);
     const skip = parseNumber(Array.isArray(req.query.skip) ? req.query.skip[0] : req.query.skip);
@@ -106,6 +107,7 @@ export async function getProducts(req: Request, res: Response): Promise<void> {
       q: typeof q === 'string' ? q : undefined,
       category: typeof category === 'string' ? category : undefined,
       status: typeof status === 'string' ? (status as any) : undefined,
+      unitId: typeof unitId === 'string' ? unitId : undefined,
       limit,
       skip,
     } satisfies ListProductsQuery);
@@ -250,6 +252,30 @@ export async function deleteProduct(req: Request, res: Response): Promise<void> 
     res.status(500).json({
       error: 'Internal Server Error',
       message: error instanceof Error ? error.message : 'Failed to delete product',
+    });
+  }
+}
+
+export async function bulkUpdateCategory(req: Request, res: Response): Promise<void> {
+  try {
+    const body = (req.body ?? {}) as { oldCategory?: string; newCategory?: string };
+    const oldCategory = typeof body.oldCategory === 'string' ? body.oldCategory.trim() : '';
+    const newCategory = typeof body.newCategory === 'string' ? body.newCategory : '';
+
+    if (!oldCategory) {
+      res.status(400).json({ error: 'Bad Request', message: 'oldCategory is required' });
+      return;
+    }
+
+    const result = await productService.bulkUpdateCategory(oldCategory, newCategory);
+    res.status(200).json({
+      success: true,
+      data: { matchedCount: result.matchedCount, modifiedCount: result.modifiedCount },
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Failed to bulk update category',
     });
   }
 }

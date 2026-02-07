@@ -28,6 +28,11 @@ export interface InvoiceResponse {
 
 export interface ListInvoicesQuery {
   userId?: string;
+  search?: string;
+  status?: string;
+  paymentMethod?: string;
+  from?: string; // ISO date or YYYY-MM-DD
+  to?: string;
   limit?: number;
   skip?: number;
 }

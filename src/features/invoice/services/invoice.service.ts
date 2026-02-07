@@ -60,11 +60,19 @@ export async function ensureInvoiceForPaidPayment(payment: Payment): Promise<Inv
   }
 }
 
+function parseDate(value: string | undefined): Date | undefined {
+  if (!value || typeof value !== 'string') return undefined;
+  const d = new Date(value.trim());
+  return isNaN(d.getTime()) ? undefined : d;
+}
+
 export async function listInvoicesForDashboard(query: ListInvoicesQuery): Promise<{ data: InvoiceResponse[]; total: number; limit: number; skip: number; }> {
   const limit = Math.min(Math.max(query.limit ?? 20, 1), 100);
   const skip = Math.max(query.skip ?? 0, 0);
 
   const userId = query.userId && ObjectId.isValid(query.userId) ? new ObjectId(query.userId) : undefined;
+  const from = parseDate(query.from);
+  const to = parseDate(query.to);
 
   // Self-healing: if filtering by a specific user, backfill invoices for their paid payments.
   if (userId) {
@@ -74,9 +82,18 @@ export async function listInvoicesForDashboard(query: ListInvoicesQuery): Promis
     }
   }
 
+  const filter = {
+    userId,
+    search: query.search?.trim(),
+    status: query.status?.trim() || undefined,
+    paymentMethod: query.paymentMethod?.trim() || undefined,
+    from,
+    to,
+  };
+
   const [invoices, total] = await Promise.all([
-    invoiceRepo.listInvoices({ userId }, limit, skip),
-    invoiceRepo.countInvoices({ userId }),
+    invoiceRepo.listInvoices(filter, limit, skip),
+    invoiceRepo.countInvoices(filter),
   ]);
 
   return {
