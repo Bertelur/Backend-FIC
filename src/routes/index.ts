@@ -10,6 +10,7 @@ import unitRouter from '../features/unit/routes/unitRoute.js';
 import customersRouter from './customersRoute.js';
 import healthCheckRouter from './healthCheck.js';
 import suratJalanRouter from './suratJalanRoute.js';
+import reportsRouter from '../features/reports/routes/reportsRoute.js';
 
 const router = express.Router();
 
@@ -26,6 +27,7 @@ const standardRoutes = [
   { path: '/orders', router: orderRouter },
   { path: '/units', router: unitRouter },
   { path: '/surat-jalan', router: suratJalanRouter },
+  { path: '/reports', router: reportsRouter },
 ];
 
 standardRoutes.forEach(({ path, router: routeRouter }) => {

@@ -1,8 +1,33 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { AuthRequest } from '../../../middleware/auth.js';
 import * as orderService from '../services/order.service.js';
 import * as buyerRepo from '../../auth/repositories/buyer.repository.js';
 import { CreateOrderRequest, UpdateOrderStatusRequest } from '../interfaces/order.types.js';
+import { SHIPPING_BANDS, getShippingCostForDistanceKm } from '../shippingPricing.js';
+
+export async function getShippingPricing(_req: Request, res: Response): Promise<void> {
+  try {
+    res.status(200).json({ success: true, data: { bands: SHIPPING_BANDS } });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Failed to get shipping pricing',
+    });
+  }
+}
+
+export async function calculateShipping(req: Request, res: Response): Promise<void> {
+  try {
+    const distanceKm = typeof req.body?.distanceKm === 'number' ? req.body.distanceKm : Number(req.body?.distanceKm);
+    const costIdr = getShippingCostForDistanceKm(distanceKm);
+    res.status(200).json({ success: true, data: { costIdr } });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Failed to calculate shipping',
+    });
+  }
+}
 
 export async function createOrder(req: AuthRequest, res: Response): Promise<void> {
   try {

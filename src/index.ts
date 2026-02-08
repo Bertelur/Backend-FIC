@@ -9,6 +9,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { initSentry } from './config/sentry.js';
 import { connectDatabase, closeDatabase } from './config/database.js';
+import { connectRedis, closeRedis } from './config/redis.js';
 import router from './routes/index.js';
 import { initializeDashboardUserIndexes } from './features/auth/repositories/dashboardUser.repository.js';
 import { initializeBuyerIndexes } from './features/auth/repositories/buyer.repository.js';
@@ -77,6 +78,9 @@ async function ensureAppReady(): Promise<void> {
   if (!appInitPromise) {
     appInitPromise = (async () => {
       await connectDatabase();
+      if (process.env.REDIS_URL) {
+        await connectRedis();
+      }
 
       await initializeDashboardUserIndexes();
       await initializeBuyerIndexes();
@@ -137,11 +141,13 @@ const isVercel = Boolean(process.env.VERCEL);
 
 if (isRunningAsScript && !isVercel) {
   process.on('SIGTERM', async () => {
+    await closeRedis();
     await closeDatabase();
     process.exit(0);
   });
 
   process.on('SIGINT', async () => {
+    await closeRedis();
     await closeDatabase();
     process.exit(0);
   });

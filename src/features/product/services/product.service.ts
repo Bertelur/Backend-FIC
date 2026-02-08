@@ -1,7 +1,19 @@
+import { createHash } from 'crypto';
 import { ObjectId } from 'mongodb';
 import type { Product } from '../models/Product.js';
 import type { CreateProductRequest, ListProductsQuery, ProductResponse, UpdateProductRequest } from '../interfaces/product.types.js';
 import * as productRepo from '../repositories/product.repository.js';
+import { cacheGet, cacheSet, cacheDelPattern } from '../../../lib/cache.js';
+import * as unitRepo from '../../unit/repositories/unit.repository.js';
+
+function listCacheKey(query: ListProductsQuery): string {
+  const limit = Math.min(Math.max(query.limit ?? 20, 1), 100);
+  const skip = Math.max(query.skip ?? 0, 0);
+  const payload = { q: query.q ?? '', category: query.category ?? '', status: query.status ?? '', unitId: query.unitId ?? '', limit, skip };
+  const str = JSON.stringify(payload);
+  const hash = createHash('sha256').update(str).digest('hex').slice(0, 16);
+  return `products:list:${hash}`;
+}
 
 function toResponse(product: Product, unitName?: string, unitIdOverride?: string): ProductResponse {
   const finalUnitId = unitIdOverride || (product.unitId ? String(product.unitId) : 'undefined');
@@ -27,6 +39,10 @@ function toResponse(product: Product, unitName?: string, unitIdOverride?: string
 }
 
 export async function listProducts(query: ListProductsQuery): Promise<{ data: ProductResponse[]; total: number; limit: number; skip: number; }> {
+  const cacheKey = listCacheKey(query);
+  const cached = await cacheGet<{ data: ProductResponse[]; total: number; limit: number; skip: number }>(cacheKey);
+  if (cached) return cached;
+
   const limit = Math.min(Math.max(query.limit ?? 20, 1), 100);
   const skip = Math.max(query.skip ?? 0, 0);
 
@@ -35,24 +51,21 @@ export async function listProducts(query: ListProductsQuery): Promise<{ data: Pr
     productRepo.countProducts({ ...query }),
   ]);
 
-  // Collect all unitIds
-  // Ideally use aggregation with $lookup. For now, multiple queries is simpler for this structure.
-  // Or fetch units by IDs (TODO: Add findUnitsByIds to unitRepo, or loop)
-  // Let's loop for now (or optimize later if performance issue)
   const populated = await Promise.all(products.map(async (p) => {
     const u = await unitRepo.findUnitById(String(p.unitId));
     return toResponse(p, u?.name);
   }));
 
-  return {
-    data: populated,
-    total,
-    limit,
-    skip,
-  };
+  const result = { data: populated, total, limit, skip };
+  await cacheSet(cacheKey, result);
+  return result;
 }
 
 export async function getProductDetails(id: string): Promise<ProductResponse | null> {
+  const cacheKey = `products:id:${String(id).trim()}`;
+  const cached = await cacheGet<ProductResponse>(cacheKey);
+  if (cached) return cached;
+
   const product = await productRepo.findProductByIdAny(id);
   if (!product) return null;
 
@@ -73,7 +86,9 @@ export async function getProductDetails(id: string): Promise<ProductResponse | n
     }
   }
 
-  return toResponse(product, uName, uId);
+  const result = toResponse(product, uName, uId);
+  await cacheSet(cacheKey, result);
+  return result;
 }
 
 function isHttpUrl(value: string): boolean {
@@ -91,8 +106,6 @@ export class DuplicateSkuError extends Error {
     this.name = 'DuplicateSkuError';
   }
 }
-
-import * as unitRepo from '../../unit/repositories/unit.repository.js';
 
 function validateStatus(status: unknown): Product['status'] {
   const allowed: Array<Product['status']> = ['active', 'inactive'];
@@ -180,7 +193,7 @@ export async function createProduct(
 
   try {
     const created = await productRepo.createProduct(productToCreate);
-    // Fetch the unit explicitly to ensure name is available
+    await cacheDelPattern('products:*');
     const unit = await unitRepo.findUnitById(String(unitId));
     return toResponse(created, unit?.name, String(unit?._id));
   } catch (error: any) {
@@ -231,6 +244,7 @@ export async function editProduct(
 
   const updated = await productRepo.updateProductByIdAny(id, updateData);
   if (updated) {
+    await cacheDelPattern('products:*');
     const unit = await unitRepo.findUnitById(String(updated.unitId));
     return toResponse(updated, unit?.name, String(unit?._id));
   }
@@ -238,13 +252,16 @@ export async function editProduct(
 }
 
 export async function deleteProduct(id: string): Promise<boolean | null> {
-  // allow both ObjectId and legacy string ids
-  return await productRepo.deleteProductByIdAny(id);
+  const result = await productRepo.deleteProductByIdAny(id);
+  if (result) await cacheDelPattern('products:*');
+  return result;
 }
 
 export async function bulkUpdateCategory(
   oldCategory: string,
   newCategory: string,
 ): Promise<{ matchedCount: number; modifiedCount: number }> {
-  return await productRepo.bulkUpdateCategory(oldCategory, newCategory);
+  const result = await productRepo.bulkUpdateCategory(oldCategory, newCategory);
+  await cacheDelPattern('products:*');
+  return result;
 }

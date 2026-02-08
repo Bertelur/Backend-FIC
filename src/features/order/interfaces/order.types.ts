@@ -36,6 +36,7 @@ export interface Order {
   items: OrderItem[];
   totalAmount: number;
   shippingMethod: ShippingMethod;
+  shippingCost?: number; // Delivery cost in IDR (0 for pickup)
   shippingAddress?: Address;
   status: OrderStatus;
   logs: OrderLog[];
@@ -54,6 +55,7 @@ export interface CreateOrderRequest {
     unit?: string; // Optional/Ignored (inferred from Product)
   }[];
   shippingMethod: ShippingMethod;
+  shippingCost?: number; // Delivery cost in IDR (0 for pickup)
   shippingAddress?: Address; // Required if method is shipping
 }
 

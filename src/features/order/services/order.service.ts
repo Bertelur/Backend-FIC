@@ -48,6 +48,9 @@ export async function createOrder(
     });
   }
 
+  const shippingCost = typeof request.shippingCost === 'number' && request.shippingCost >= 0 ? request.shippingCost : 0;
+  const totalWithShipping = totalAmount + shippingCost;
+
   const now = new Date();
   const paymentDeadline = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2 hours from creation
   const initialLog: OrderLog = {
@@ -60,8 +63,9 @@ export async function createOrder(
   const newOrder: Omit<Order, '_id'> = {
     userId: new ObjectId(userId),
     items,
-    totalAmount,
+    totalAmount: totalWithShipping,
     shippingMethod: request.shippingMethod,
+    ...(shippingCost > 0 && { shippingCost }),
     shippingAddress: request.shippingAddress,
     status: 'pending',
     logs: [initialLog],

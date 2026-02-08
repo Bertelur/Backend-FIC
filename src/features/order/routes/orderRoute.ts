@@ -4,6 +4,9 @@ import { authenticateToken } from '../../../middleware/auth.js';
 
 const router = Router();
 
+router.get('/shipping-pricing', orderController.getShippingPricing);
+router.post('/calculate-shipping', orderController.calculateShipping);
+
 router.post('/', authenticateToken, orderController.createOrder);
 router.get('/', authenticateToken, orderController.listOrders);
 router.get('/:id', authenticateToken, orderController.getOrderById);
